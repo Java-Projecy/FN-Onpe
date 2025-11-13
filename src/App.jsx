@@ -11,9 +11,7 @@ import CargaDatos from './pages/CargaDatos';
 import LimpiezaDatos from './pages/LimpiezaDatos';
 import AnalisisEstadistico from './pages/AnalisisEstadistico';
 import Visualizacion from './pages/Visualizacion';
-import RegistroVotantes from './pages/RegistroVotantes';
-import Candidatos from './pages/Candidatos';
-import ResultadosElectorales from './pages/ResultadosElectorales';
+
 import Reportes from './pages/Reportes';
 import EntrenamientoModelo from './pages/EntrenamientoModelo';
 // Páginas de autenticación
