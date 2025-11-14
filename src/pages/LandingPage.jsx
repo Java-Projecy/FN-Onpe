@@ -430,61 +430,80 @@ function getChatbotResponse(userInput) {
     );
 
     // Componente mejorado para el modal de propuestas
-    const PropuestasModal = ({ candidate, onClose }) => (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
-        >
+    const PropuestasModal = ({ candidate, onClose }) => {
+        // Mapeo de colores a valores CSS
+        const colorMap = {
+            'red': '#EF4444',
+            'orange': '#F97316',
+            'blue': '#3B82F6',
+            'purple': '#A855F7',
+            'teal': '#14B8A6',
+            'cyan': '#06B6D4',
+            'pink': '#EC4899',
+            'indigo': '#6366F1',
+            'yellow': '#EAB308',
+            'lime': '#84CC16',
+            'amber': '#F59E0B'
+        };
+
+        const headerColor = colorMap[candidate.color] || '#3B82F6';
+
+        return (
             <motion.div
-                variants={modalVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
             >
-                <div className={`bg-gradient-to-r from-${candidate.color}-500 to-${candidate.color}-600 p-6 text-white`}>
-                    <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-4">
-                            <motion.img
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ delay: 0.1, type: "spring", stiffness: 500, damping: 15 }}
-                                src={candidate.photo}
-                                alt={candidate.nombre}
-                                className="w-16 h-16 rounded-xl object-cover border-2 border-white/50"
-                            />
-                            <motion.div
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.2 }}
+                <motion.div
+                    variants={modalVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                >
+                    <div style={{ background: `linear-gradient(to right, ${headerColor}, ${headerColor}dd)` }} className="p-8 text-white">
+                        <div className="flex justify-between items-start gap-4">
+                            <div className="flex items-center gap-6 flex-1">
+                                <motion.img
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: 0.1, type: "spring", stiffness: 500, damping: 15 }}
+                                    src={candidate.photo}
+                                    alt={candidate.nombre}
+                                    className="w-24 h-24 rounded-xl object-cover border-4 border-white/70 flex-shrink-0"
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="flex-1 min-w-0"
+                                >
+                                    <h2 className="text-3xl font-bold mb-2 break-words">{candidate.nombre}</h2>
+                                    <p className="text-base opacity-95 flex items-center gap-2 flex-wrap">
+                                        <img src={candidate.logo} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                                        <span>{candidate.partido}</span>
+                                    </p>
+                                </motion.div>
+                            </div>
+                            <motion.button
+                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={onClose}
+                                className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all flex-shrink-0"
                             >
-                                <h3 className="text-2xl font-bold">{candidate.nombre}</h3>
-                                <p className="text-sm opacity-90 flex items-center gap-2">
-                                    <img src={candidate.logo} alt="" className="w-5 h-5 rounded-full" />
-                                    {candidate.partido}
-                                </p>
-                            </motion.div>
+                                <X size={28} />
+                            </motion.button>
                         </div>
-                        <motion.button
-                            whileHover={{ scale: 1.1, rotate: 90 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={onClose}
-                            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-all"
-                        >
-                            <X size={24} />
-                        </motion.button>
                     </div>
-                </div>
-                <div className="p-6">
+                <div className="p-8">
                     <motion.h4 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"
+                        className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"
                     >
-                        <FileText size={20} className={`text-${candidate.color}-600`} />
+                        <FileText size={22} style={{ color: headerColor }} />
                         Plan de Gobierno
                     </motion.h4>
                     <div className="space-y-3 mb-6">
@@ -496,8 +515,8 @@ function getChatbotResponse(userInput) {
                                 transition={{ delay: 0.4 + index * 0.1 }}
                                 className="flex items-start gap-3"
                             >
-                                <div className={`w-6 h-6 rounded-full bg-${candidate.color}-100 flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                                    <span className={`text-xs font-bold text-${candidate.color}-600`}>{index + 1}</span>
+                                <div style={{ backgroundColor: `${headerColor}22` }} className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span style={{ color: headerColor }} className="text-xs font-bold">{index + 1}</span>
                                 </div>
                                 <p className="text-gray-700 text-sm leading-relaxed">{propuesta}</p>
                             </motion.div>
@@ -509,13 +528,13 @@ function getChatbotResponse(userInput) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="mb-4"
+                            className="mb-5 p-4 bg-gray-50 rounded-lg"
                         >
                             <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <Award size={16} className={`text-${candidate.color}-600`} />
+                                <Award size={18} style={{ color: headerColor }} />
                                 Experiencia
                             </h5>
-                            <p className="text-gray-700 text-sm">{candidate.experiencia}</p>
+                            <p className="text-gray-700 text-sm leading-relaxed">{candidate.experiencia}</p>
                         </motion.div>
                     )}
                     
@@ -524,13 +543,13 @@ function getChatbotResponse(userInput) {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.6 }}
-                            className="mb-6"
+                            className="mb-6 p-4 bg-gray-50 rounded-lg"
                         >
                             <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <Users size={16} className={`text-${candidate.color}-600`} />
+                                <Users size={18} style={{ color: headerColor }} />
                                 Educación
                             </h5>
-                            <p className="text-gray-700 text-sm">{candidate.educacion}</p>
+                            <p className="text-gray-700 text-sm leading-relaxed">{candidate.educacion}</p>
                         </motion.div>
                     )}
                     
@@ -538,13 +557,14 @@ function getChatbotResponse(userInput) {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.7 }}
-                        className="pt-4 border-t border-gray-200"
+                        className="pt-6 border-t border-gray-200"
                     >
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={onClose}
-                            className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-medium transition-colors"
+                            className="w-full px-4 py-3 rounded-xl font-medium transition-colors text-white"
+                            style={{ backgroundColor: headerColor }}
                         >
                             Cerrar
                         </motion.button>
@@ -552,7 +572,8 @@ function getChatbotResponse(userInput) {
                 </div>
             </motion.div>
         </motion.div>
-    );
+        );
+    };
 
     // Componente mejorado para el modal de éxito
     const SuccessModal = () => (
@@ -984,7 +1005,7 @@ function getChatbotResponse(userInput) {
                         className={`px-6 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
                             activeTab === tab.id
                                 ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md'
-                                : 'text-gray-600 hover:text-gray-900'
+                                : 'text-black-600 hover:text-black-900'
                         }`}
                     >
                         <tab.icon size={16} />
