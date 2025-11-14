@@ -24,12 +24,12 @@ const EntrenamientoModelo = () => {
         { id: 'transformer', name: 'Transformer', icon: '⚡' }
     ];
 
-    const metricsData = {
-        accuracy: 94.5,
-        precision: 92.8,
-        recall: 93.2,
-        f1Score: 93.0
-    };
+    const [metricsData, setMetricsData] = useState({
+        accuracy: 0,
+        precision: 0,
+        recall: 0,
+        f1Score: 0
+    });
 
     // Simular historial inicial
     useEffect(() => {
@@ -60,7 +60,16 @@ const EntrenamientoModelo = () => {
 
                     // Simular métricas aleatorias
                     const accuracy = +(85 + Math.random() * 14).toFixed(1);
-                    const f1 = +(accuracy - Math.random() * 5).toFixed(1);
+                    const precision = +(accuracy - Math.random() * 3).toFixed(1);
+                    const recall = +(accuracy - Math.random() * 2).toFixed(1);
+                    const f1Score = +(accuracy - Math.random() * 1).toFixed(1);
+
+                    setMetricsData({
+                        accuracy,
+                        precision,
+                        recall,
+                        f1Score
+                    });
 
                     const newEntry = {
                         id: Date.now(),
@@ -68,7 +77,7 @@ const EntrenamientoModelo = () => {
                         algorithm: getCurrentAlgorithmName(),
                         framework: modelType === 'sklearn' ? 'Scikit-Learn' : 'PyTorch',
                         accuracy,
-                        f1,
+                        f1: f1Score,
                         time: `${(Math.random() * 10 + 1).toFixed(1)}s`
                     };
 
@@ -375,7 +384,7 @@ const EntrenamientoModelo = () => {
                     </motion.div>
                 </div>
 
-                {/* Panel de Métricas */}
+                {/* Panel Lateral Derecho */}
                 <div className="space-y-6">
                     {/* Estado del Modelo */}
                     <motion.div 
@@ -420,7 +429,7 @@ const EntrenamientoModelo = () => {
                         </div>
                     </motion.div>
 
-                    {/* NUEVO: Modelos Entrenados (Historial Compacto) */}
+                    {/* Modelos Entrenados */}
                     <motion.div 
                         variants={itemVariants}
                         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
@@ -471,103 +480,6 @@ const EntrenamientoModelo = () => {
                         </div>
                     </motion.div>
 
-                    {/* Métricas de Rendimiento (original) */}
-                    <AnimatePresence>
-                        {trainingComplete && (
-                            <motion.div 
-                                variants={itemVariants}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-                            >
-                                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <Target size={20} className="text-green-600" />
-                                    Métricas de Rendimiento
-                                </h3>
-                                <div className="space-y-4">
-                                    <motion.div variants={itemVariants}>
-                                        <div className="flex justify-between mb-2">
-                                            <span className="text-sm text-gray-600">Accuracy</span>
-                                            <span className="font-bold text-green-600">{metricsData.accuracy}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <motion.div
-                                                className="bg-green-600 h-2 rounded-full"
-                                                style={{ width: `${metricsData.accuracy}%` }}
-                                                variants={metricBarVariants}
-                                                initial="initial"
-                                                animate="animate"
-                                            ></motion.div>
-                                        </div>
-                                    </motion.div>
-
-                                    <motion.div variants={itemVariants}>
-                                        <div className="flex justify-between mb-2">
-                                            <span className="text-sm text-gray-600">Precision</span>
-                                            <span className="font-bold text-blue-600">{metricsData.precision}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <motion.div
-                                                className="bg-blue-600 h-2 rounded-full"
-                                                style={{ width: `${metricsData.precision}%` }}
-                                                variants={metricBarVariants}
-                                                initial="initial"
-                                                animate="animate"
-                                            ></motion.div>
-                                        </div>
-                                    </motion.div>
-
-                                    <motion.div variants={itemVariants}>
-                                        <div className="flex justify-between mb-2">
-                                            <span className="text-sm text-gray-600">Recall</span>
-                                            <span className="font-bold text-purple-600">{metricsData.recall}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <motion.div
-                                                className="bg-purple-600 h-2 rounded-full"
-                                                style={{ width: `${metricsData.recall}%` }}
-                                                variants={metricBarVariants}
-                                                initial="initial"
-                                                animate="animate"
-                                            ></motion.div>
-                                        </div>
-                                    </motion.div>
-
-                                    <motion.div variants={itemVariants}>
-                                        <div className="flex justify-between mb-2">
-                                            <span className="text-sm text-gray-600">F1-Score</span>
-                                            <span className="font-bold text-indigo-600">{metricsData.f1Score}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <motion.div
-                                                className="bg-indigo-600 h-2 rounded-full"
-                                                style={{ width: `${metricsData.f1Score}%` }}
-                                                variants={metricBarVariants}
-                                                initial="initial"
-                                                animate="animate"
-                                            ></motion.div>
-                                        </div>
-                                    </motion.div>
-                                </div>
-
-                                <motion.div 
-                                    className="mt-6 pt-4 border-t border-gray-200"
-                                    variants={itemVariants}
-                                >
-                                    <motion.button 
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                    >
-                                        <Download size={18} />
-                                        Descargar Modelo
-                                    </motion.button>
-                                </motion.div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
                     {/* Consejos */}
                     <motion.div 
                         variants={itemVariants}
@@ -617,7 +529,7 @@ const EntrenamientoModelo = () => {
                 </div>
             </motion.div>
 
-            {/* Historial de Entrenamientos (tabla original al final) */}
+            {/* Historial de Entrenamientos */}
             <AnimatePresence>
                 {trainingComplete && (
                     <motion.div 
@@ -646,7 +558,9 @@ const EntrenamientoModelo = () => {
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: 0.5 }}
                                     >
-                                        <td className="px-4 py-3 text-sm text-gray-800">2024-11-11 14:30</td>
+                                        <td className="px-4 py-3 text-sm text-gray-800">
+                                            {new Date().toLocaleString('es-ES')}
+                                        </td>
                                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{getCurrentAlgorithmName()}</td>
                                         <td className="px-4 py-3 text-sm text-green-600 font-bold">{metricsData.accuracy}%</td>
                                         <td className="px-4 py-3 text-sm text-indigo-600 font-bold">{metricsData.f1Score}%</td>
