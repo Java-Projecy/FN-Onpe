@@ -1,12 +1,27 @@
 import { useState } from 'react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, Settings, Maximize2, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import {
+  RefreshCw, ChevronDown, Vote, MapPin, Users
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Visualizacion = () => {
   const [activeChart, setActiveChart] = useState('barras');
+  const [electionType, setElectionType] = useState('presidencial');
 
-  // Datos para gráficos
+  // Opciones del selector de elección
+  const electionOptions = [
+    { value: 'presidencial', label: 'Presidencial', icon: Vote },
+    { value: 'regional', label: 'Regional', icon: MapPin },
+    { value: 'distrital', label: 'Distrital', icon: Users },
+  ];
+
+  const currentElectionIcon = electionOptions.find(opt => opt.value === electionType)?.icon || Vote;
+
+  // Datos de ejemplo (puedes hacerlos dinámicos después según electionType)
   const dataEdad = [
     { rango: '18-25', cantidad: 12430 },
     { rango: '26-35', cantidad: 23450 },
@@ -40,8 +55,6 @@ const Visualizacion = () => {
     { name: 'Otros', value: 13.9, color: '#10b981' },
   ];
 
-  const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
-
   const chartTypes = [
     { id: 'barras', name: 'Gráfico de Barras', icon: '📊' },
     { id: 'lineas', name: 'Gráfico de Líneas', icon: '📈' },
@@ -49,107 +62,43 @@ const Visualizacion = () => {
     { id: 'comparativo', name: 'Comparativo', icon: '📉' },
   ];
 
-  // Animaciones
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5
-      }
-    }
-  };
-
-  const chartVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }
-  };
-
-  const buttonVariants = {
-    hover: { scale: 1.05 },
-    tap: { scale: 0.95 }
-  };
-
   // Componentes de gráficos
   const BarrasChart = () => (
     <motion.div
       key="barras"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
       className="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
-      {/* Gráfico de Barras - Edad */}
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
-        whileHover={{ scale: 1.02 }}
-      >
+      <motion.div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800">Distribución por Edad</h3>
-          <span className="text-sm text-gray-600">Total: 67,330</span>
+          <span className="text-sm text-gray-600">Total: 67,330 votantes</span>
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={dataEdad}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="rango" stroke="#6b7280" />
             <YAxis stroke="#6b7280" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#fff', 
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px'
-              }}
-            />
+            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
             <Bar dataKey="cantidad" fill="#6366f1" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </motion.div>
 
-      {/* Gráfico de Barras - Distrito */}
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-        whileHover={{ scale: 1.02 }}
-      >
+      <motion.div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800">Votantes por Distrito</h3>
-          <span className="text-sm text-gray-600">Top 5</span>
+          <span className="text-sm text-gray-600">Top 5 regiones</span>
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={dataDistrito} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis type="number" stroke="#6b7280" />
-            <YAxis dataKey="nombre" type="category" stroke="#6b7280" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#fff', 
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px'
-              }}
-            />
+            <YAxis dataKey="nombre" type="category" stroke="#6b7280" width={80} />
+            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
             <Bar dataKey="valor" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -162,45 +111,22 @@ const Visualizacion = () => {
       key="lineas"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
       className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-gray-800">Tendencia de Registros Mensuales</h3>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">2024</span>
-          <motion.select 
-            className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-            whileHover={{ scale: 1.05 }}
-            whileFocus={{ scale: 1.02 }}
-          >
-            <option>2024</option>
-            <option>2023</option>
-            <option>2022</option>
-          </motion.select>
-        </div>
+        <span className="text-sm text-gray-600">2024</span>
       </div>
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={dataTendencia}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="mes" stroke="#6b7280" />
           <YAxis stroke="#6b7280" />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#fff', 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px'
-            }}
-          />
+          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
           <Legend />
-          <Line 
-            type="monotone" 
-            dataKey="registros" 
-            stroke="#6366f1" 
-            strokeWidth={3}
-            dot={{ fill: '#6366f1', r: 6 }}
-            activeDot={{ r: 8 }}
-          />
+          <Line type="monotone" dataKey="registros" stroke="#6366f1" strokeWidth={4} dot={{ fill: '#6366f1', r: 6 }} activeDot={{ r: 8 }} />
         </LineChart>
       </ResponsiveContainer>
     </motion.div>
@@ -208,22 +134,16 @@ const Visualizacion = () => {
 
   const PieChartComponent = () => (
     <motion.div
-      key="pie"
+    key="pie"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
       className="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
-      {/* Gráfico Circular */}
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
-        whileHover={{ scale: 1.02 }}
-      >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Distribución Porcentual</h3>
-        <ResponsiveContainer width="100%" height={350}>
+      <motion.div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Distribución Porcentual por Región</h3>
+        <ResponsiveContainer width="100%" height={380}>
           <PieChart>
             <Pie
               data={dataPie}
@@ -231,7 +151,7 @@ const Visualizacion = () => {
               cy="50%"
               labelLine={false}
               label={({ name, value }) => `${name}: ${value}%`}
-              outerRadius={120}
+              outerRadius={130}
               fill="#8884d8"
               dataKey="value"
             >
@@ -244,30 +164,13 @@ const Visualizacion = () => {
         </ResponsiveContainer>
       </motion.div>
 
-      {/* Leyenda y Detalles */}
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.2 }}
-        whileHover={{ scale: 1.02 }}
-      >
+      <motion.div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-lg font-bold text-gray-800 mb-4">Detalle por Región</h3>
         <div className="space-y-3">
           {dataPie.map((item, index) => (
-            <motion.div 
-              key={index} 
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + index * 0.1 }}
-              whileHover={{ scale: 1.02, backgroundColor: "rgba(243, 244, 246, 1)" }}
-            >
+            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <div 
-                  className="w-4 h-4 rounded-full" 
-                  style={{ backgroundColor: item.color }}
-                ></div>
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.color }}></div>
                 <span className="font-medium text-gray-800">{item.name}</span>
               </div>
               <div className="text-right">
@@ -276,7 +179,7 @@ const Visualizacion = () => {
                   {Math.round((item.value / 100) * 125430).toLocaleString()} votantes
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </motion.div>
@@ -288,49 +191,33 @@ const Visualizacion = () => {
       key="comparativo"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
       className="space-y-6"
     >
-      {/* Gráfico Comparativo */}
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        whileHover={{ scale: 1.02 }}
-      >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Comparación Multi-Dimensional</h3>
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Comparación por Distrito</h3>
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={dataDistrito}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="nombre" stroke="#6b7280" />
             <YAxis stroke="#6b7280" />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#fff', 
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px'
-              }}
-            />
+            <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
             <Legend />
-            <Bar dataKey="valor" fill="#6366f1" name="Votantes Registrados" />
+            <Bar dataKey="valor" fill="#6366f1" name="Votantes 2026" />
           </BarChart>
         </ResponsiveContainer>
-      </motion.div>
+      </div>
 
-      {/* Comparación de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { color: 'blue', title: 'Tasa de Participación', value: '82.5%', desc: '+5.2% vs. año anterior' },
+          { color: 'blue', title: 'Tasa de Participación', value: '82.5%', desc: '+5.2% vs. 2021' },
           { color: 'purple', title: 'Promedio por Distrito', value: '24,086', desc: 'Votantes registrados' },
           { color: 'pink', title: 'Crecimiento Mensual', value: '+18.3%', desc: 'Últimos 6 meses' }
         ].map((metric, index) => (
-          <motion.div 
+          <motion.div
             key={index}
-            className={`bg-gradient-to-br from-${metric.color}-500 to-${metric.color}-600 p-6 rounded-xl shadow-sm text-white`}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 + index * 0.1 }}
+            className={`bg-gradient-to-br from-${metric.color}-500 to-${metric.color}-600 p-6 rounded-xl text-white shadow-lg`}
             whileHover={{ scale: 1.05, y: -5 }}
           >
             <p className="text-sm opacity-90 mb-2">{metric.title}</p>
@@ -343,67 +230,75 @@ const Visualizacion = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4">
       {/* Selector de Tipo de Gráfico */}
-      <motion.div 
+      <motion.div
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <h3 className="text-lg font-bold text-gray-800 mb-4">Tipo de Visualización</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {chartTypes.map((chart, index) => (
+          {chartTypes.map((chart) => (
             <motion.button
               key={chart.id}
               onClick={() => setActiveChart(chart.id)}
-              className={`p-4 rounded-lg border-2 transition-all ${
+              className={`p-6 rounded-lg border-2 transition-all flex flex-col items-center ${
                 activeChart === chart.id
-                  ? 'border-slate-500 bg-slate-50'
+                  ? 'border-slate-500 bg-slate-50 shadow-md'
                   : 'border-gray-200 hover:border-slate-300'
               }`}
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <motion.div 
-                className="text-3xl mb-2"
-                whileHover={{ scale: 1.2 }}
-                transition={{ type: "spring", stiffness: 400 }}
-              >
-                {chart.icon}
-              </motion.div>
-              <p className="text-sm font-medium text-gray-800">{chart.name}</p>
+              <div className="text-4xl mb-3">{chart.icon}</div>
+              <p className="text-sm font-semibold text-gray-800">{chart.name}</p>
             </motion.button>
           ))}
         </div>
       </motion.div>
 
-      {/* Controles de Visualización */}
-      <motion.div 
-        className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-200"
+      {/* BARRA DE ACCIONES: Actualizar + Selector de Elección */}
+      <motion.div
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-xl shadow-sm border border-gray-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="flex items-center gap-3">
-          <motion.button 
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
-          >
-            <RefreshCw size={18} />
-            <span className="hidden md:inline">Actualizar</span>
-          </motion.button>
-        </div>
-        <div className="flex items-center gap-3">
+        <motion.button
+          className="flex items-center gap-3 px-6 py-3 bg-slate-600 text-white font-medium rounded-lg hover:bg-slate-700 transition-all shadow-md"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <RefreshCw size={20} className="animate-spin-slow" />
+          Actualizar Datos
+        </motion.button>
+
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-gray-600 hidden sm:block">Tipo de elección:</span>
+          <div className="relative">
+            <select
+              value={electionType}
+              onChange={(e) => setElectionType(e.target.value)}
+              className="appearance-none bg-white border border-gray-300 rounded-lg pl-11 pr-10 py-3 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all cursor-pointer hover:border-slate-400 shadow-sm"
+            >
+              {electionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <currentElectionIcon className="text-slate-600" size={20} />
+            </div>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <ChevronDown className="text-gray-500" size={20} />
+            </div>
+          </div>
         </div>
       </motion.div>
 
-      {/* Gráficos */}
+      {/* Gráficos dinámicos */}
       <div>
         {activeChart === 'barras' && <BarrasChart />}
         {activeChart === 'lineas' && <LineasChart />}
@@ -411,32 +306,29 @@ const Visualizacion = () => {
         {activeChart === 'comparativo' && <ComparativoChart />}
       </div>
 
-      {/* Panel de Estadísticas Rápidas */}
-      <motion.div 
+      {/* Resumen rápido */}
+      <motion.div
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen de Datos</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen General</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { color: 'blue', title: 'Total', value: '125,430' },
-            { color: 'green', title: 'Activos', value: '98,234' },
-            { color: 'yellow', title: 'Pendientes', value: '15,896' },
+            { color: 'indigo', title: 'Total Registrados', value: '125,430' },
+            { color: 'emerald', title: 'Activos', value: '98,234' },
+            { color: 'amber', title: 'Pendientes', value: '15,896' },
             { color: 'purple', title: 'Distritos', value: '25' },
-            { color: 'pink', title: 'Edad Media', value: '38.5' }
+            { color: 'rose', title: 'Edad Media', value: '38.5 años' }
           ].map((stat, index) => (
-            <motion.div 
+            <motion.div
               key={index}
-              className={`text-center p-4 bg-${stat.color}-50 rounded-lg`}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
+              className={`text-center p-5 bg-${stat.color}-50 rounded-xl border border-${stat.color}-200`}
               whileHover={{ scale: 1.05, y: -5 }}
             >
-              <p className={`text-sm text-${stat.color}-800 font-medium`}>{stat.title}</p>
-              <p className={`text-2xl font-bold text-${stat.color}-900`}>{stat.value}</p>
+              <p className={`text-sm font-medium text-${stat.color}-800`}>{stat.title}</p>
+              <p className={`text-2xl font-bold text-${stat.color}-900 mt-1`}>{stat.value}</p>
             </motion.div>
           ))}
         </div>
@@ -445,4 +337,4 @@ const Visualizacion = () => {
   );
 };
 
-export default Visualizacion;   
+export default Visualizacion;

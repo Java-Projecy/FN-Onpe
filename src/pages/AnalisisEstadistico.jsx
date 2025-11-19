@@ -1,9 +1,19 @@
 import { useState } from 'react';
-import { TrendingUp, Calculator, BarChart2, PieChart, Activity } from 'lucide-react';
+import {
+  TrendingUp,
+  Calculator,
+  BarChart2,
+  Activity,
+  Vote,
+  MapPin,
+  Users,
+  ChevronDown,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AnalisisEstadistico = () => {
   const [selectedAnalysis, setSelectedAnalysis] = useState('descriptivo');
+  const [electionType, setElectionType] = useState('presidencial');
 
   const estadisticas = {
     descriptivas: [
@@ -25,37 +35,53 @@ const AnalisisEstadistico = () => {
       { nombre: 'Arequipa', votantes: 18920, porcentaje: 15.1 },
       { nombre: 'Cusco', votantes: 15340, porcentaje: 12.2 },
       { nombre: 'Otros', votantes: 17490, porcentaje: 13.9 },
-    ]
+    ],
   };
 
-  // Animaciones simplificadas
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+  const modelos = {
+    presidencial: {
+      activo: 'Random Forest',
+      metricas: { r2: '0.889', rmse: '3.87', precision: '93.5%', f1: '0.92' },
+      participacion: '81.2%',
+      factores: [
+        { label: 'Edad', percentage: 38, color: 'slate' },
+        { label: 'Educación', percentage: 31, color: 'blue' },
+        { label: 'Distrito', percentage: 22, color: 'purple' },
+        { label: 'Otros', percentage: 9, color: 'green' },
+      ],
+    },
+    regional: {
+      activo: 'XGBoost',
+      metricas: { r2: '0.847', rmse: '4.23', precision: '91.2%', f1: '0.89' },
+      participacion: '76.8%',
+      factores: [
+        { label: 'Ubicación', percentage: 42, color: 'slate' },
+        { label: 'Edad', percentage: 28, color: 'blue' },
+        { label: 'Ingresos', percentage: 18, color: 'purple' },
+        { label: 'Otros', percentage: 12, color: 'green' },
+      ],
+    },
+    distrital: {
+      activo: 'Regresión Logística',
+      metricas: { r2: '0.792', rmse: '5.11', precision: '88.7%', f1: '0.85' },
+      participacion: '73.5%',
+      factores: [
+        { label: 'Proximidad', percentage: 45, color: 'slate' },
+        { label: 'Edad', percentage: 25, color: 'blue' },
+        { label: 'Demografía', percentage: 20, color: 'purple' },
+        { label: 'Otros', percentage: 10, color: 'green' },
+      ],
+    },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5
-      }
-    }
-  };
+  const electionOptions = [
+    { value: 'presidencial', label: 'Elección Presidencial', icon: Vote },
+    { value: 'regional', label: 'Elección Regional', icon: MapPin },
+    { value: 'distrital', label: 'Elección Distrital', icon: Users },
+  ];
 
-  const buttonVariants = {
-    hover: { scale: 1.05 },
-    tap: { scale: 0.95 }
-  };
+  const currentIcon = electionOptions.find(opt => opt.value === electionType)?.icon || Vote;
 
-  // Contenido de cada análisis
   const AnalisisDescriptivo = () => (
     <motion.div
       key="descriptivo"
@@ -64,13 +90,13 @@ const AnalisisEstadistico = () => {
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Estadísticas Descriptivas */}
+      {/* Tarjetas de estadísticas básicas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {estadisticas.descriptivas.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <motion.div 
-              key={index} 
+            <motion.div
+              key={index}
               className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -87,8 +113,8 @@ const AnalisisEstadistico = () => {
         })}
       </div>
 
-      {/* Distribución por Edad */}
-      <motion.div 
+      {/* Distribución por rango de edad */}
+      <motion.div
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -97,7 +123,7 @@ const AnalisisEstadistico = () => {
         <h3 className="text-lg font-bold text-gray-800 mb-4">Distribución por Rango de Edad</h3>
         <div className="space-y-4">
           {estadisticas.distribucion.map((item, index) => (
-            <motion.div 
+            <motion.div
               key={index}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -122,9 +148,10 @@ const AnalisisEstadistico = () => {
         </div>
       </motion.div>
 
-      {/* Distribución por Distrito */}
+      {/* Votantes por distrito y Resumen estadístico */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div 
+        {/* Votantes por distrito */}
+        <motion.div
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -133,8 +160,8 @@ const AnalisisEstadistico = () => {
           <h3 className="text-lg font-bold text-gray-800 mb-4">Votantes por Distrito</h3>
           <div className="space-y-3">
             {estadisticas.distritos.map((distrito, index) => (
-              <motion.div 
-                key={index} 
+              <motion.div
+                key={index}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -153,7 +180,8 @@ const AnalisisEstadistico = () => {
           </div>
         </motion.div>
 
-        <motion.div 
+        {/* Resumen estadístico */}
+        <motion.div
           className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,9 +192,9 @@ const AnalisisEstadistico = () => {
             {[
               { color: 'blue', title: 'Coeficiente de Variación', value: '31.95%', desc: 'Variabilidad moderada' },
               { color: 'green', title: 'Asimetría', value: '0.35', desc: 'Distribución ligeramente sesgada' },
-              { color: 'purple', title: 'Curtosis', value: '-0.82', desc: 'Distribución platicúrtica' }
+              { color: 'purple', title: 'Curtosis', value: '-0.82', desc: 'Distribución platicúrtica' },
             ].map((stat, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 className={`p-4 bg-${stat.color}-50 border border-${stat.color}-200 rounded-lg`}
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -185,190 +213,176 @@ const AnalisisEstadistico = () => {
     </motion.div>
   );
 
-  const AnalisisPredictivo = () => (
-    <motion.div
-      key="predictivo"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-    >
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+  const AnalisisPredictivo = () => {
+    const modeloActual = modelos[electionType];
+
+    return (
+      <motion.div
+        key="predictivo"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
       >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Modelos de Predicción</h3>
-        <div className="space-y-4">
-          {[
-            { 
-              title: 'Regresión Lineal', 
-              active: true, 
-              metrics: [
-                { label: 'R² Score', value: '0.847' },
-                { label: 'RMSE', value: '4.23' }
-              ]
-            },
-            { 
-              title: 'Random Forest', 
-              active: false,
-              metrics: [
-                { label: 'Precisión', value: '92.3%' },
-                { label: 'F1-Score', value: '0.91' }
-              ]
-            },
-            { 
-              title: 'XGBoost', 
-              active: false,
-              metrics: [
-                { label: 'Precisión', value: '94.1%' },
-                { label: 'F1-Score', value: '0.93' }
-              ]
-            }
-          ].map((model, index) => (
-            <motion.div 
-              key={index}
-              className={`p-4 border-2 ${model.active ? 'border-slate-500 bg-slate-50' : 'border-gray-200'} rounded-lg`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-            >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Modelo activo */}
+          <motion.div
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              Modelo Activo - {electionType.charAt(0).toUpperCase() + electionType.slice(1)}
+            </h3>
+            <div className="p-4 border-2 border-slate-500 bg-slate-50 rounded-lg">
               <div className="flex items-center justify-between mb-3">
-                <p className="font-bold text-gray-800">{model.title}</p>
-                {model.active && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                    Activo
-                  </span>
-                )}
+                <p className="font-bold text-gray-800">{modeloActual.activo}</p>
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                  Activo
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                {model.metrics.map((metric, idx) => (
-                  <div key={idx}>
-                    <p className="text-xs text-gray-600">{metric.label}</p>
-                    <p className={`text-lg font-bold ${model.active ? 'text-slate-600' : 'text-gray-800'}`}>
-                      {metric.value}
-                    </p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {Object.entries(modeloActual.metricas).map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-xs text-gray-600 uppercase">{key}</p>
+                    <p className="text-lg font-bold text-slate-600">{value}</p>
                   </div>
                 ))}
               </div>
-              {model.active && (
-                <motion.button 
-                  className="w-full py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Ver Detalles
-                </motion.button>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      <motion.div 
-        className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Predicciones</h3>
-        <div className="space-y-4">
-          <motion.div 
-            className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-lg"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            whileHover={{ scale: 1.02 }}
-          >
-            <p className="text-sm font-medium text-gray-700 mb-2">Participación Estimada 2024</p>
-            <p className="text-3xl font-bold text-slate-900">78.5%</p>
-            <div className="mt-3 flex items-center gap-2 text-xs text-green-700">
-              <TrendingUp size={14} />
-              <span>+3.2% respecto a 2020</span>
+              <motion.button
+                className="w-full py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Ver Detalles del Modelo
+              </motion.button>
             </div>
           </motion.div>
 
-          <motion.div 
-            className="p-4 border border-gray-200 rounded-lg"
+          {/* Predicciones y factores */}
+          <motion.div
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            whileHover={{ scale: 1.02 }}
+            transition={{ delay: 0.2 }}
           >
-            <p className="text-sm font-medium text-gray-700 mb-3">Factores Principales</p>
-            <div className="space-y-2">
-              {[
-                { label: 'Edad', percentage: 35, color: 'slate' },
-                { label: 'Distrito', percentage: 28, color: 'blue' },
-                { label: 'Nivel Educativo', percentage: 22, color: 'purple' },
-                { label: 'Otros', percentage: 15, color: 'green' }
-              ].map((factor, index) => (
-                <motion.div 
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                >
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>{factor.label}</span>
-                    <span className="font-medium">{factor.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <motion.div
-                      className={`bg-${factor.color}-500 h-2 rounded-full`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${factor.percentage}%` }}
-                      transition={{ duration: 1, delay: 0.6 + index * 0.1 }}
-                    />
-                  </div>
-                </motion.div>
-              ))}
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Predicciones</h3>
+
+            <motion.div
+              className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-lg mb-6"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <p className="text-sm font-medium text-gray-700 mb-2">Participación Estimada 2026</p>
+              <p className="text-3xl font-bold text-slate-900">{modeloActual.participacion}</p>
+              <div className="mt-3 flex items-center gap-2 text-xs text-green-700">
+                <TrendingUp size={14} />
+                <span>+{(parseFloat(modeloActual.participacion) - 75).toFixed(1)}% vs 2021</span>
+              </div>
+            </motion.div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">Factores Principales</p>
+              <div className="space-y-3">
+                {modeloActual.factores.map((factor, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-600">{factor.label}</span>
+                      <span className="font-semibold">{factor.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <motion.div
+                        className={`bg-${factor.color}-500 h-2 rounded-full`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${factor.percentage}%` }}
+                        transition={{ duration: 0.8, delay: index * 0.1 }}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
       </motion.div>
-    </motion.div>
-  );
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Selector de Tipo de Análisis */}
-      <motion.div 
+    <div className="space-y-6 max-w-7xl mx-auto p-4">
+      {/* Selector de tipo de análisis + Dropdown de elección */}
+      <motion.div
         className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <h3 className="text-lg font-bold text-gray-800 mb-4">Tipo de Análisis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {[
             { id: 'descriptivo', label: 'Análisis Descriptivo', description: 'Estadísticas básicas', icon: Calculator },
-            { id: 'predictivo', label: 'Análisis Predictivo', description: 'Modelos y predicciones', icon: Activity }
-          ].map((analysis, index) => (
+            { id: 'predictivo', label: 'Análisis Predictivo', description: 'Modelos y predicciones', icon: Activity },
+          ].map((analysis) => (
             <motion.button
               key={analysis.id}
               onClick={() => setSelectedAnalysis(analysis.id)}
-              className={`p-4 rounded-lg border-2 transition-all ${
+              className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center ${
                 selectedAnalysis === analysis.id
                   ? 'border-slate-500 bg-slate-50'
                   : 'border-gray-200 hover:border-slate-300'
               }`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              transition={{ delay: index * 0.1 }}
             >
-              <analysis.icon className={`mx-auto mb-2 ${
-                selectedAnalysis === analysis.id ? 'text-slate-600' : 'text-gray-400'
-              }`} size={32} />
+              <analysis.icon
+                className={`mb-2 ${selectedAnalysis === analysis.id ? 'text-slate-600' : 'text-gray-400'}`}
+                size={32}
+              />
               <p className="font-medium text-gray-800">{analysis.label}</p>
               <p className="text-xs text-gray-600 mt-1">{analysis.description}</p>
             </motion.button>
           ))}
         </div>
+
+        {/* Dropdown tipo de elección */}
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tipo de Elección
+          </label>
+          <div className="relative">
+            <select
+              value={electionType}
+              onChange={(e) => setElectionType(e.target.value)}
+              className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 py-3 pl-12 pr-10 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all cursor-pointer hover:border-slate-400"
+            >
+              {electionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+              <currentIcon className="text-slate-600" size={20} />
+            </div>
+
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <ChevronDown className="text-gray-500" size={20} />
+            </div>
+          </div>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Los datos y modelos se actualizan según la elección seleccionada.
+          </p>
+        </div>
       </motion.div>
 
-      {/* Contenido del Análisis Seleccionado */}
+      {/* Contenido según selección */}
       <div>
         {selectedAnalysis === 'descriptivo' && <AnalisisDescriptivo />}
         {selectedAnalysis === 'predictivo' && <AnalisisPredictivo />}
@@ -377,4 +391,4 @@ const AnalisisEstadistico = () => {
   );
 };
 
-export default AnalisisEstadistico; 
+export default AnalisisEstadistico;

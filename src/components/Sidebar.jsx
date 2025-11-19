@@ -8,7 +8,13 @@ import {
 import { useState, useEffect } from 'react';
 
 const Sidebar = ({ activeSection, setActiveSection, sidebarOpen, setSidebarOpen, onLogout }) => {
-  const [expandedSections, setExpandedSections] = useState({});
+  const [expandedSections, setExpandedSections] = useState({
+    'General': true,
+    'Gestión Electoral': false,
+    'Análisis de Datos': false,
+    'Entrenamiento': false,
+    'Administración': false
+  });
   const [darkMode, setDarkMode] = useState(false);
   const [userData, setUserData] = useState(null);
 
@@ -277,7 +283,7 @@ const Sidebar = ({ activeSection, setActiveSection, sidebarOpen, setSidebarOpen,
 
             {/* Items de la sección */}
             <AnimatePresence>
-              {(!sidebarOpen || expandedSections[section.title] || sectionIndex === 0) && (
+              {expandedSections[section.title] && (
                 <motion.ul 
                   className="space-y-1 mt-1"
                   initial={sidebarOpen ? { opacity: 0, height: 0 } : false}
