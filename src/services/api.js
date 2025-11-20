@@ -1,182 +1,105 @@
+// src/services/api.js
 import axios from 'axios';
 
-// 🌐 URL base de tu API - Detecta automáticamente el entorno
+// URL base del backend (Railway, localhost, producción, etc.)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-console.log('🔗 API URL configurada:', API_BASE_URL); // Para debug
+console.log('API URL configurada:', API_BASE_URL);
 
-// Crear instancia de axios con configuración base
+// Instancia global de Axios
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 30000, // 30 segundos de timeout para Railway
+    timeout: 30000, // 30 segundos (ideal para Railway)
 });
 
-// Interceptor para logging y debugging
+// ======================== INTERCEPTORES (opcional pero útil) ========================
 api.interceptors.request.use(
     (config) => {
-        console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(`%c${config.method?.toUpperCase()} ${config.url}`, 'color: #4ade80');
         return config;
     },
-    (error) => {
-        console.error('❌ Error en request interceptor:', error);
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
-// Interceptor para manejar errores globalmente
 api.interceptors.response.use(
     (response) => {
-        console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+        console.log(`%c${response.config.method?.toUpperCase()} ${response.config.url} → ${response.status}`, 'color: #60a5fa');
         return response;
     },
     (error) => {
-        // Manejo mejorado de errores
         if (error.response) {
-            // El servidor respondió con un código de error
-            console.error('❌ Error del servidor:', {
-                status: error.response.status,
-                data: error.response.data,
-                url: error.config?.url
-            });
-            
-            // Mensajes personalizados según el código de error
-            switch (error.response.status) {
-                case 400:
-                    console.error('Bad Request - Verifica los datos enviados');
-                    break;
-                case 401:
-                    console.error('No autorizado - Verifica la autenticación');
-                    break;
-                case 403:
-                    console.error('Prohibido - No tienes permisos');
-                    break;
-                case 404:
-                    console.error('No encontrado - El recurso no existe');
-                    break;
-                case 500:
-                    console.error('Error interno del servidor');
-                    break;
-                default:
-                    console.error(`Error ${error.response.status}`);
-            }
+            console.error(`%cERROR ${error.response.status} → ${error.config?.url}`, 'color: #ef4444', error.response.data);
         } else if (error.request) {
-            // La petición se hizo pero no hubo respuesta
-            console.error('❌ Sin respuesta del servidor:', {
-                message: 'El servidor no respondió. Verifica la conexión.',
-                baseURL: API_BASE_URL
-            });
+            console.error('%cSin respuesta del servidor', 'color: #ef4444', error.request);
         } else {
-            // Algo pasó al configurar la petición
-            console.error('❌ Error en la configuración:', error.message);
+            console.error('%cError de configuración', 'color: #ef4444', error.message);
         }
-        
         return Promise.reject(error);
     }
 );
 
 // ============================================
-// CANDIDATOS
+// CANDIDATOS → /api/data/candidates (SEGURO)
 // ============================================
 export const candidatosAPI = {
-    // Obtener todos los candidatos
-    getAll: () => api.get('/candidatos'),
-
-    // Obtener candidato por ID
-    getById: (id) => api.get(`/candidatos/${id}`),
-
-    // Crear nuevo candidato
-    create: (candidato) => api.post('/candidatos', candidato),
-
-    // Actualizar candidato
-    update: (id, candidato) => api.put(`/candidatos/${id}`, candidato),
-
-    // Eliminar candidato
-    delete: (id) => api.delete(`/candidatos/${id}`),
+    getAll: () => api.get('/data/candidates'),
+    getById: (id) => api.get(`/data/candidates/${id}`),
+    create: (candidato) => api.post('/data/candidates', candidato),
+    update: (id, candidato) => api.put(`/data/candidates/${id}`, candidato),
+    delete: (id) => api.delete(`/data/candidates/${id}`),
 };
 
 // ============================================
-// VOTANTES
+// VOTANTES → /api/data/voters (SEGURO)
 // ============================================
 export const votantesAPI = {
-    // Obtener todos los votantes
-    getAll: () => api.get('/votantes'),
-
-    // Obtener votante por ID
-    getById: (id) => api.get(`/votantes/${id}`),
-
-    // Obtener votante por DNI
-    getByDni: (dni) => api.get(`/votantes/dni/${dni}`),
-
-    // Crear nuevo votante
-    create: (votante) => api.post('/votantes', votante),
-
-    // Actualizar votante
-    update: (id, votante) => api.put(`/votantes/${id}`, votante),
-
-    // Eliminar votante
-    delete: (id) => api.delete(`/votantes/${id}`),
+    getAll: () => api.get('/data/voters'),
+    getById: (id) => api.get(`/data/voters/${id}`),
+    getByDni: (dni) => api.get(`/data/voters/dni/${dni}`),        // ← Crucial para LandingPage
+    create: (votante) => api.post('/data/voters', votante),
+    update: (id, votante) => api.put(`/data/voters/${id}`, votante),
+    delete: (id) => api.delete(`/data/voters/${id}`),
 };
 
 // ============================================
-// VOTOS PRESIDENCIALES
+// VOTOS PRESIDENCIALES → /api/data/presidential-votes
 // ============================================
 export const votosPresidencialesAPI = {
-    // Obtener todos los votos presidenciales
-    getAll: () => api.get('/votos-presidenciales'),
-
-    // Obtener voto por ID
-    getById: (id) => api.get(`/votos-presidenciales/${id}`),
-
-    // Registrar nuevo voto
-    create: (voto) => api.post('/votos-presidenciales', voto),
-
-    // Eliminar voto
-    delete: (id) => api.delete(`/votos-presidenciales/${id}`),
+    getAll: () => api.get('/data/presidential-votes'),
+    getById: (id) => api.get(`/data/presidential-votes/${id}`),
+    create: (voto) => api.post('/data/presidential-votes', voto),
+    delete: (id) => api.delete(`/data/presidential-votes/${id}`),
 };
 
 // ============================================
-// VOTOS REGIONALES
+// VOTOS REGIONALES → /api/data/regional-votes
 // ============================================
 export const votosRegionalesAPI = {
-    // Obtener todos los votos regionales
-    getAll: () => api.get('/votos-regionales'),
-
-    // Obtener voto por ID
-    getById: (id) => api.get(`/votos-regionales/${id}`),
-
-    // Registrar nuevo voto
-    create: (voto) => api.post('/votos-regionales', voto),
-
-    // Eliminar voto
-    delete: (id) => api.delete(`/votos-regionales/${id}`),
+    getAll: () => api.get('/data/regional-votes'),
+    getById: (id) => api.get(`/data/regional-votes/${id}`),
+    create: (voto) => api.post('/data/regional-votes', voto),
+    delete: (id) => api.delete(`/data/regional-votes/${id}`),
 };
 
 // ============================================
-// VOTOS DISTRITALES
+// VOTOS DISTRITALES → /api/data/district-votes
 // ============================================
 export const votosDistritalesAPI = {
-    // Obtener todos los votos distritales
-    getAll: () => api.get('/votos-distritales'),
-
-    // Obtener voto por ID
-    getById: (id) => api.get(`/votos-distritales/${id}`),
-
-    // Registrar nuevo voto
-    create: (voto) => api.post('/votos-distritales', voto),
-
-    // Eliminar voto
-    delete: (id) => api.delete(`/votos-distritales/${id}`),
+    getAll: () => api.get('/data/district-votes'),
+    getById: (id) => api.get(`/data/district-votes/${id}`),
+    create: (voto) => api.post('/data/district-votes', voto),
+    delete: (id) => api.delete(`/data/district-votes/${id}`),
 };
 
 // ============================================
-// HEALTH CHECK (útil para Railway)
+// HEALTH CHECK (opcional – útil para monitorear Railway)
 // ============================================
 export const healthAPI = {
-    // Verificar si el backend está disponible
     check: () => api.get('/actuator/health').catch(() => ({ data: { status: 'DOWN' } })),
 };
 
+// Exportar la instancia por si alguien la necesita directamente
 export default api;
