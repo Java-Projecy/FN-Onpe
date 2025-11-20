@@ -7,20 +7,15 @@ import {
   Search,
   X,
   Eye,
+  Trophy,
   FileText,
 } from 'lucide-react';
 import { candidatosAPI } from '../services/api';
+import { votosPresidencialesAPI, votosRegionalesAPI, votosDistritalesAPI } from '../services/api';
 
-// Animaciones
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
 };
 
 const itemVariants = {
@@ -28,7 +23,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
-// Mapea campos camelCase de la API
 const mapearCandidato = (c) => ({
   ...c,
   tipo_eleccion: c.tipoEleccion,
@@ -40,8 +34,11 @@ const mapearCandidato = (c) => ({
 
 const normalizarTipo = (tipo) => tipo ? tipo.toString().toLowerCase().trim() : '';
 
+const formatNumber = (num) => num.toLocaleString('es-ES');
+
 const Candidatos = () => {
   const [candidatos, setCandidatos] = useState([]);
+  const [votosPorCandidato, setVotosPorCandidato] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -50,36 +47,78 @@ const Candidatos = () => {
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
 
   useEffect(() => {
-    const cargar = async () => {
+    const cargarDatos = async () => {
       try {
         setLoading(true);
-        const res = await candidatosAPI.getAll();
-        const candidatosMapeados = (res.data || []).map(mapearCandidato);
+
+        const resCandidatos = await candidatosAPI.getAll();
+        const candidatosMapeados = (resCandidatos.data || []).map(mapearCandidato);
+
+        const [pres, reg, dist] = await Promise.all([
+          votosPresidencialesAPI.getAll().catch(() => ({ data: [] })),
+          votosRegionalesAPI.getAll().catch(() => ({ data: [] })),
+          votosDistritalesAPI.getAll().catch(() => ({ data: [] })),
+        ]);
+
+        const todosLosVotos = [...(pres.data || []), ...(reg.data || []), ...(dist.data || [])];
+
+        const conteo = {};
+        todosLosVotos.forEach(voto => {
+          const id = voto.candidato?.id || voto.candidato_id;
+          if (id) conteo[id] = (conteo[id] || 0) + 1;
+        });
+
+        setVotosPorCandidato(conteo);
         setCandidatos(candidatosMapeados);
       } catch (err) {
-        setError('Error al cargar los candidatos');
+        setError('Error al cargar los datos');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    cargar();
+
+    cargarDatos();
   }, []);
 
+  // Enriquecer con votos y porcentaje
+  const candidatosConVotos = candidatos.map(c => ({
+    ...c,
+    votos: votosPorCandidato[c.id] || 0
+  }));
+
+  const totalVotosPorTipo = {
+    presidencial: candidatosConVotos.filter(c => normalizarTipo(c.tipo_eleccion) === 'presidencial').reduce((s, c) => s + c.votos, 0),
+    regional: candidatosConVotos.filter(c => normalizarTipo(c.tipo_eleccion) === 'regional').reduce((s, c) => s + c.votos, 0),
+    distrital: candidatosConVotos.filter(c => normalizarTipo(c.tipo_eleccion) === 'distrital').reduce((s, c) => s + c.votos, 0),
+  };
+
+  const candidatosFinales = candidatosConVotos.map(c => {
+    const tipo = normalizarTipo(c.tipo_eleccion);
+    const total = totalVotosPorTipo[tipo] || 1;
+    const porcentaje = total > 0 ? ((c.votos / total) * 100).toFixed(1) : 0;
+    return { ...c, porcentaje };
+  });
+
+  const candidatosOrdenados = [...candidatosFinales].sort((a, b) => b.votos - a.votos);
+  const liderActual = filtroTipo === 'todos'
+    ? candidatosOrdenados[0]
+    : candidatosOrdenados.find(c => normalizarTipo(c.tipo_eleccion) === filtroTipo);
+
   const tipoConfig = {
-    presidencial: { label: 'Presidencial', color: 'bg-gradient-to-r from-purple-600 to-pink-600' },
-    regional: { label: 'Regional', color: 'bg-gradient-to-r from-emerald-600 to-teal-600' },
-    distrital: { label: 'Distrital', color: 'bg-gradient-to-r from-blue-600 to-cyan-600' },
+    presidencial: { label: 'Presidencial', color: 'from-purple-600 to-pink-600', bar: 'bg-purple-600' },
+    regional: { label: 'Regional', color: 'from-emerald-600 to-teal-600', bar: 'bg-emerald-600' },
+    distrital: { label: 'Distrital', color: 'from-blue-600 to-cyan-600', bar: 'bg-blue-600' },
   };
 
   const estadisticas = [
     { label: 'Total Candidatos', value: candidatos.length, icon: Users, gradient: 'from-blue-500 to-cyan-500' },
     { label: 'Presidenciales', value: candidatos.filter(c => normalizarTipo(c.tipo_eleccion) === 'presidencial').length, icon: Award, gradient: 'from-purple-500 to-pink-500' },
-    { label: 'Distritales', value: candidatos.filter(c => normalizarTipo(c.tipo_eleccion) === 'distrital').length, icon: Users, gradient: 'from-green-500 to-emerald-500' },
-    { label: 'Regionales', value: candidatos.filter(c => normalizarTipo(c.tipo_eleccion) === 'regional').length, icon: TrendingUp, gradient: 'from-orange-500 to-red-500' },
+    { label: 'Regionales', value: candidatos.filter(c => normalizarTipo(c.tipo_eleccion) === 'regional').length, icon: TrendingUp, gradient: 'from-emerald-500 to-teal-500' },
+    { label: 'Distritales', value: candidatos.filter(c => normalizarTipo(c.tipo_eleccion) === 'distrital').length, icon: Users, gradient: 'from-orange-500 to-red-500' },
   ];
 
-  const candidatosFiltrados = candidatos.filter(c => {
+  const candidatosFiltrados = candidatosFinales.filter(c => {
     const tipoOk = filtroTipo === 'todos' || normalizarTipo(c.tipo_eleccion) === filtroTipo;
     const busquedaOk = !terminoBusqueda ||
       c.nombre?.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
@@ -129,7 +168,7 @@ const Candidatos = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-20 text-xl">Cargando candidatos...</div>;
+  if (loading) return <div className="text-center py-20 text-xl text-slate-600">Cargando resultados...</div>;
   if (error) return <div className="text-center py-20 text-red-600 text-xl">{error}</div>;
 
   return (
@@ -139,8 +178,8 @@ const Candidatos = () => {
       <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800 p-8 shadow-2xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-white mb-2">Gestión de Candidatos</h1>
-          <p className="text-white/90">Administra y supervisa todos los candidatos electorales</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Resultados Electorales en Vivo</h1>
+          <p className="text-white/90">Seguimiento en tiempo real de votos y preferencias</p>
         </div>
       </motion.div>
 
@@ -166,7 +205,7 @@ const Candidatos = () => {
         })}
       </motion.div>
 
-      {/* Filtros por tipo */}
+      {/* Filtros */}
       <motion.div variants={itemVariants} className="glass-effect p-6 rounded-2xl shadow-xl">
         <h3 className="text-lg font-bold text-slate-800 mb-4">Filtrar por Tipo</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -206,37 +245,48 @@ const Candidatos = () => {
         </div>
       </motion.div>
 
-      {/* GRID DE CANDIDATOS - CON ANIMACIÓN PERFECTA */}
+      {/* GRID DE CANDIDATOS - CON TIPO Y BARRA DE PROGRESO */}
       <motion.div
-        key={`${filtroTipo}-${terminoBusqueda}`}  // ← CLAVE: Fuerza re-render y animación completa
+        key={`${filtroTipo}-${terminoBusqueda}`}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         {candidatosFiltrados.map((candidato) => {
-          const tipoNormalizado = normalizarTipo(candidato.tipo_eleccion);
-          const config = tipoConfig[tipoNormalizado] || { label: 'Sin tipo', color: 'bg-gray-500' };
+          const tipo = normalizarTipo(candidato.tipo_eleccion);
+          const config = tipoConfig[tipo] || { label: 'Desconocido', color: 'bg-gray-500', bar: 'bg-gray-600' };
+          const esLider = liderActual?.id === candidato.id;
 
           return (
             <motion.div
               key={candidato.id}
-              layout                    // ← Anima posición y tamaño suavemente
+              layout
               variants={itemVariants}
               whileHover={{ y: -8, scale: 1.02 }}
               className="group relative glass-effect rounded-2xl overflow-hidden hover:shadow-2xl transition-all"
             >
+              {/* Badge de Tipo de Elección (¡AHORA SÍ ESTÁ!) */}
               <div className="absolute top-4 left-4 z-20">
-                <span className={`px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg ${config.color}`}>
+                <span className={`px-4 py-2 rounded-full text-xs font-bold text-white shadow-lg ${config.color}`}>
                   {config.label}
                 </span>
               </div>
 
-              <div className="h-32 bg-gradient-to-br from-slate-600 to-slate-800 relative overflow-hidden">
+              {/* Trofeo al Líder */}
+              {esLider && filtroTipo !== 'todos' && (
+                <div className="absolute top-4 right-4 z-20 animate-pulse">
+                  <Trophy className="text-yellow-500 drop-shadow-2xl" size={36} />
+                </div>
+              )}
+
+              {/* Header con gradiente del tipo */}
+              <div className={`h-32 bg-gradient-to-br ${config.color} relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
               </div>
 
               <div className="p-6 -mt-16 relative z-10">
+                {/* Foto */}
                 <div className="w-28 h-28 mx-auto mb-4 rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
                   {candidato.image_url ? (
                     <img src={candidato.image_url} alt={candidato.nombre} className="w-full h-full object-cover" />
@@ -247,31 +297,59 @@ const Candidatos = () => {
                   )}
                 </div>
 
-                <h3 className="text-xl font-bold text-center text-slate-800 mb-1">{candidato.nombre || 'Sin nombre'}</h3>
-                <p className="text-sm text-center bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-medium">
-                  {candidato.partido || 'Sin partido'}
+                {/* Nombre y Partido */}
+                <h3 className="text-xl font-bold text-center text-slate-800 mb-1">{candidato.nombre}</h3>
+                <p className="text-sm text-center font-medium bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {candidato.partido}
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 my-5 p-4 bg-slate-50 rounded-xl text-center text-sm">
-                  <div>
+                {/* Barra de Progreso Electoral */}
+                <div className="my-5 p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-3xl font-bold text-indigo-600">{candidato.porcentaje}%</p>
+                      <p className="text-sm text-slate-600">{formatNumber(candidato.votos)} votos</p>
+                    </div>
+                    {esLider && filtroTipo !== 'todos' && (
+                      <span className="text-xs font-bold text-yellow-600 uppercase tracking-wider bg-yellow-100 px-3 py-1 rounded-full">
+                        Líder
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden shadow-inner">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${candidato.porcentaje}%` }}
+                      transition={{ duration: 1.3, ease: "easeOut" }}
+                      className={`h-full rounded-full ${config.bar} relative overflow-hidden`}
+                    >
+                      <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Stats rápidas */}
+                <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
+                  <div className="p-3 bg-slate-50 rounded-xl">
                     <p className="text-slate-600">Propuestas</p>
                     <p className="font-bold text-indigo-600 text-lg">{candidato.propuestas.length}</p>
                   </div>
-                  <div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
                     <p className="text-slate-600">Tipo</p>
                     <p className="font-bold">{config.label}</p>
                   </div>
-                  <div>
+                  <div className="p-3 bg-slate-50 rounded-xl">
                     <p className="text-slate-600">Estado</p>
                     <p className="font-bold text-green-600">Activo</p>
                   </div>
                 </div>
 
+                {/* Botón ver propuestas */}
                 <button
                   onClick={() => abrirModalPropuestas(candidato)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-medium shadow-lg"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all font-medium shadow-lg"
                 >
-                  <Eye size={18} /> Ver Propuestas Completas
+                  <Eye size={18} /> Ver Propuestas
                 </button>
               </div>
             </motion.div>
@@ -279,13 +357,12 @@ const Candidatos = () => {
         })}
       </motion.div>
 
-      {/* Modal */}
+      {/* Modal de Propuestas (sin cambios) */}
       {showModal && candidatoSeleccionado && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
             className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
           >
             <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white relative">
@@ -306,7 +383,7 @@ const Candidatos = () => {
                   <h2 className="text-3xl font-bold">{candidatoSeleccionado.nombre}</h2>
                   <p className="text-xl opacity-90">{candidatoSeleccionado.partido}</p>
                   <p className="text-sm opacity-80 mt-2">
-                    {candidatoSeleccionado.propuestas.length} propuestas registradas
+                    {candidatoSeleccionado.propuestas.length} propuestas • {formatNumber(candidatoSeleccionado.votos)} votos ({candidatoSeleccionado.porcentaje}%)
                   </p>
                 </div>
               </div>
@@ -319,29 +396,15 @@ const Candidatos = () => {
                     <div key={i} className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition-all group">
                       <div className="flex items-start justify-between mb-4">
                         <h3 className="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
-                          {p.titulo || 'Propuesta sin título'}
+                          {p.titulo || 'Sin título'}
                         </h3>
                         <FileText className="text-slate-400" size={24} />
                       </div>
-                      <p className="text-slate-600 leading-relaxed mb-4">
-                        {p.descripcion || 'Sin descripción disponible.'}
-                      </p>
+                      <p className="text-slate-600 leading-relaxed mb-4">{p.descripcion || 'Sin descripción.'}</p>
                       <div className="flex flex-wrap gap-3">
-                        {p.categoria && (
-                          <span className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
-                            {p.categoria}
-                          </span>
-                        )}
-                        {p.estado && (
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getEstadoColor(p.estado)}`}>
-                            {p.estado}
-                          </span>
-                        )}
-                        {p.prioridad && (
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${getPrioridadColor(p.prioridad)}`}>
-                            Prioridad {p.prioridad}
-                          </span>
-                        )}
+                        {p.categoria && <span className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">{p.categoria}</span>}
+                        {p.estado && <span className={`px-4 py-2 rounded-full text-sm font-medium ${getEstadoColor(p.estado)}`}>{p.estado}</span>}
+                        {p.prioridad && <span className={`px-4 py-2 rounded-full text-sm font-medium ${getPrioridadColor(p.prioridad)}`}>Prioridad {p.prioridad}</span>}
                       </div>
                     </div>
                   ))}
