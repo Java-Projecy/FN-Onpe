@@ -749,83 +749,110 @@ const LandingPage = () => {
             setError('Debes seleccionar al menos un candidato');
             return;
         }
-    
+
         if (!dniVerified) {
             setError('Debes verificar tu DNI primero');
             return;
         }
-    
+
         setLoading(true);
         setError('');
-    
+
         try {
-            // 1. Crear votante con valores garantizados NO nulos ni vacíos
+            // ✅ Payload simplificado con SOLO los campos de la tabla
             const votantePayload = {
                 dni: formData.dni.trim(),
-                nombres: (formData.nombres || "Ciudadano Anónimo").trim(),
-                apellido_paterno: (formData.apellido_paterno || "VOTANTE").trim(),
-                apellido_materno: (formData.apellido_materno || "VIRTUAL").trim(),
-                departamento: formData.departamento || "LIMA",  // ← OBLIGATORIO
-                provincia: formData.provincia || "LIMA",
-                distrito: formData.distrito || "LIMA",
+                nombres: (formData.nombres || "Ciudadano").trim(),
+                apellido_paterno: (formData.apellido_paterno || "Anónimo").trim(),
+                apellido_materno: (formData.apellido_materno || "Virtual").trim(),
+                departamento: (formData.departamento || "LIMA").trim(),
+                provincia: (formData.provincia || "LIMA").trim(),
+                distrito: (formData.distrito || "LIMA").trim(),
+                direccion: formData.direccion?.trim() || null,
+                direccion_completa: formData.direccion_completa?.trim() || null,
+                ubigeo_reniec: formData.ubigeo_reniec || null,
+                ubigeo_sunat: formData.ubigeo_sunat || null,
                 telefono: formData.telefono?.trim() || null,
-                email: formData.email?.trim() || null
+                email: formData.email?.trim() || null,
+                estado: 'Activo'
             };
-    
-            console.log("ENVIANDO VOTANTE:", votantePayload); // ← ESTO ES CLAVE
-    
+
+            console.log("📤 PAYLOAD ENVIADO:", JSON.stringify(votantePayload, null, 2));
+
             const votanteResponse = await votantesAPI.create(votantePayload);
             const votanteCreado = votanteResponse.data;
-    
-            // Helper para obtener candidato completo
-            const getCandidatoCompleto = (nombre, tipo) => {
-                const lista = tipo === 'presidencial' ? candidatos.presidencial :
-                    tipo === 'regional' ? candidatos.regional : candidatos.distrital;
-                return lista.find(c => c.nombre === nombre);
-            };
-    
+
+            console.log("✅ VOTANTE CREADO:", votanteCreado);
+
+            // Registrar votos
             const votosPromises = [];
-    
+
             if (selectedCandidates.presidencial) {
-                const candidato = getCandidatoCompleto(selectedCandidates.presidencial, 'presidencial');
-                votosPromises.push(votosPresidencialesAPI.create({
-                    votante: votanteCreado,
-                    candidato: candidato,
-                    dniVotante: formData.dni,
-                    departamento: formData.departamento || "LIMA"
-                }));
+                const candidato = candidatos.presidencial.find(c => c.nombre === selectedCandidates.presidencial);
+                if (candidato) {
+                    console.log("🗳️ Registrando voto presidencial...");
+                    votosPromises.push(
+                        votosPresidencialesAPI.create({
+                            votante: { id: votanteCreado.id },
+                            candidato: { id: candidato.id },
+                            dniVotante: formData.dni,
+                            departamento: formData.departamento || "LIMA",
+                            provincia: formData.provincia || "LIMA",
+                            distrito: formData.distrito || "LIMA"
+                        })
+                    );
+                }
             }
-    
+
             if (selectedCandidates.regional) {
-                const candidato = getCandidatoCompleto(selectedCandidates.regional, 'regional');
-                votosPromises.push(votosRegionalesAPI.create({
-                    votante: votanteCreado,
-                    candidato: candidato,
-                    dniVotante: formData.dni,
-                    departamento: formData.departamento || "LIMA"
-                }));
+                const candidato = candidatos.regional.find(c => c.nombre === selectedCandidates.regional);
+                if (candidato) {
+                    console.log("🗳️ Registrando voto regional...");
+                    votosPromises.push(
+                        votosRegionalesAPI.create({
+                            votante: { id: votanteCreado.id },
+                            candidato: { id: candidato.id },
+                            dniVotante: formData.dni,
+                            departamento: formData.departamento || "LIMA",
+                            provincia: formData.provincia || "LIMA",
+                            distrito: formData.distrito || "LIMA"
+                        })
+                    );
+                }
             }
-    
+
             if (selectedCandidates.distrital) {
-                const candidato = getCandidatoCompleto(selectedCandidates.distrital, 'distrital');
-                votosPromises.push(votosDistritalesAPI.create({
-                    votante: votanteCreado,
-                    candidato: candidato,
-                    dniVotante: formData.dni,
-                    departamento: formData.departamento || "LIMA"
-                }));
+                const candidato = candidatos.distrital.find(c => c.nombre === selectedCandidates.distrital);
+                if (candidato) {
+                    console.log("🗳️ Registrando voto distrital...");
+                    votosPromises.push(
+                        votosDistritalesAPI.create({
+                            votante: { id: votanteCreado.id },
+                            candidato: { id: candidato.id },
+                            dniVotante: formData.dni,
+                            departamento: formData.departamento || "LIMA",
+                            provincia: formData.provincia || "LIMA",
+                            distrito: formData.distrito || "LIMA"
+                        })
+                    );
+                }
             }
-    
+
             await Promise.all(votosPromises);
+
+            console.log("✅ PROCESO COMPLETADO");
             setShowSuccessModal(true);
-    
+
         } catch (err) {
-            console.error("Error completo:", err);
-            if (err.response?.data?.message) {
-                setError(err.response.data.message);
-            } else {
-                setError('Error al registrar el voto. Posiblemente ya votaste con este DNI.');
-            }
+            console.error("❌ ERROR:", err);
+            console.error("❌ Response:", err.response?.data);
+            console.error("❌ Status:", err.response?.status);
+
+            const errorMsg = err.response?.data?.message
+                || err.response?.data?.error
+                || 'Error al registrar. Verifica que no hayas votado antes con este DNI.';
+
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
