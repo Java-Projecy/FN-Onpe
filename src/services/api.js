@@ -1,18 +1,17 @@
 // src/services/api.js
 import axios from 'axios';
 
-// URL base del backend (Railway, localhost, producción, etc.)
+// ✅ Esto tomará la URL de Railway o localhost según el entorno
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-console.log('API URL configurada:', API_BASE_URL);
+console.log('🌐 API URL configurada:', API_BASE_URL);
 
-// Instancia global de Axios
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 30000, // 30 segundos (ideal para Railway)
+    timeout: 30000,
 });
 
 // ======================== INTERCEPTORES (opcional pero útil) ========================
