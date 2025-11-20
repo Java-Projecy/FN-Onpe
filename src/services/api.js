@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // ✅ Esto tomará la URL de Railway o localhost según el entorno
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 console.log('🌐 API URL configurada:', API_BASE_URL);
 
