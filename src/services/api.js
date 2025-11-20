@@ -17,14 +17,14 @@ const api = axios.create({
 // ======================== ENDPOINTS ========================
 export const candidatosAPI = {
     getAll: () => api.get('/data/candidates'),
-    getById: (id) => api.get(`/data/candidates/${id}`),
-    create: (candidato) => api.post('/data/candidates', candidato),
-    update: (id, candidato) => api.put(`/data/candidates/${id}`, candidato),
-    delete: (id) => api.delete(`/data/candidates/${id}`),
+    getById: (id) => api.get(`/data/candidates/${id}`), // ← Quitado /api
+    create: (candidato) => api.post('/data/candidates', candidato), // ← Quitado /api
+    update: (id, candidato) => api.put(`/data/candidates/${id}`, candidato), // ← Quitado /api
+    delete: (id) => api.delete(`/data/candidates/${id}`), // ← Quitado /api
 };
 
 // ============================================
-// VOTANTES → /api/data/voters (SEGURO)
+// VOTANTES → /data/voters (SEGURO)
 // ============================================
 export const votantesAPI = {
     getAll: () => api.get('/data/voters'),
@@ -36,7 +36,7 @@ export const votantesAPI = {
 };
 
 // ============================================
-// VOTOS PRESIDENCIALES → /api/data/presidential-votes
+// VOTOS PRESIDENCIALES → /data/presidential-votes
 // ============================================
 export const votosPresidencialesAPI = {
     getAll: () => api.get('/data/presidential-votes'),
@@ -46,7 +46,7 @@ export const votosPresidencialesAPI = {
 };
 
 // ============================================
-// VOTOS REGIONALES → /api/data/regional-votes
+// VOTOS REGIONALES → /data/regional-votes
 // ============================================
 export const votosRegionalesAPI = {
     getAll: () => api.get('/data/regional-votes'),
@@ -56,7 +56,7 @@ export const votosRegionalesAPI = {
 };
 
 // ============================================
-// VOTOS DISTRITALES → /api/data/district-votes
+// VOTOS DISTRITALES → /data/district-votes
 // ============================================
 export const votosDistritalesAPI = {
     getAll: () => api.get('/data/district-votes'),
