@@ -230,13 +230,56 @@ const LandingPage = () => {
                 const response = await candidatosAPI.getAll();
 
                 console.log('📋 Response completo:', response);
-                console.log('📋 Candidatos cargados desde API:', response);
+                console.log('🔍 Estructura del response:', Object.keys(response));
 
-                // ✅ CORRECTO: La respuesta YA es el array
-                const candidatosData = response; // ← Sin .data
+                // ✅ DEPURA para encontrar dónde está el array
+                console.log('🔍 response.data?:', response.data);
+                console.log('🔍 response.content?:', response.content);
+                console.log('🔍 response.candidatos?:', response.candidatos);
+                console.log('🔍 response.result?:', response.result);
 
-                console.log('🔢 Tipo de datos:', typeof candidatosData);
-                console.log('📊 Es array?:', Array.isArray(candidatosData));
+                // Busca el array en las propiedades del objeto
+                let candidatosData = null;
+
+                if (Array.isArray(response.data)) {
+                    candidatosData = response.data;
+                    console.log('✅ Array encontrado en response.data');
+                }
+                else if (Array.isArray(response.content)) {
+                    candidatosData = response.content; // Para paginación
+                    console.log('✅ Array encontrado en response.content');
+                }
+                else if (Array.isArray(response.candidatos)) {
+                    candidatosData = response.candidatos;
+                    console.log('✅ Array encontrado en response.candidatos');
+                }
+                else if (Array.isArray(response.result)) {
+                    candidatosData = response.result;
+                    console.log('✅ Array encontrado en response.result');
+                }
+                else if (Array.isArray(response)) {
+                    candidatosData = response;
+                    console.log('✅ Response es directamente el array');
+                }
+                else {
+                    // Si no encontramos array, busca en cualquier propiedad
+                    for (let key in response) {
+                        if (Array.isArray(response[key])) {
+                            candidatosData = response[key];
+                            console.log(`✅ Array encontrado en response.${key}`);
+                            break;
+                        }
+                    }
+                }
+
+                // Si no encontramos array, usa array vacío
+                if (!candidatosData || !Array.isArray(candidatosData)) {
+                    console.error('❌ No se pudo encontrar array de candidatos en:', response);
+                    candidatosData = [];
+                }
+
+                console.log('📋 Candidatos cargados:', candidatosData);
+                console.log('🔢 Cantidad de candidatos:', candidatosData.length);
 
                 // Agrupar candidatos por tipo de elección
                 const candidatosPorTipo = {
@@ -245,7 +288,6 @@ const LandingPage = () => {
                     distrital: []
                 };
 
-                // ✅ Ahora usa candidatosData directamente
                 candidatosData.forEach(candidato => {
                     const tipo = candidato.tipoEleccion?.toLowerCase() || candidato.tipo_eleccion?.toLowerCase();
 
