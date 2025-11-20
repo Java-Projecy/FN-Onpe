@@ -229,7 +229,14 @@ const LandingPage = () => {
                 setLoadingCandidatos(true);
                 const response = await candidatosAPI.getAll();
 
-                console.log('📋 Candidatos cargados desde API:', response.data);
+                console.log('📋 Response completo:', response);
+                console.log('📋 Candidatos cargados desde API:', response);
+
+                // ✅ CORRECTO: La respuesta YA es el array
+                const candidatosData = response; // ← Sin .data
+
+                console.log('🔢 Tipo de datos:', typeof candidatosData);
+                console.log('📊 Es array?:', Array.isArray(candidatosData));
 
                 // Agrupar candidatos por tipo de elección
                 const candidatosPorTipo = {
@@ -238,7 +245,8 @@ const LandingPage = () => {
                     distrital: []
                 };
 
-                response.data.forEach(candidato => {
+                // ✅ Ahora usa candidatosData directamente
+                candidatosData.forEach(candidato => {
                     const tipo = candidato.tipoEleccion?.toLowerCase() || candidato.tipo_eleccion?.toLowerCase();
 
                     // Mapear el candidato al formato que espera el componente
@@ -270,8 +278,6 @@ const LandingPage = () => {
             } catch (error) {
                 console.error('❌ Error al cargar candidatos:', error);
                 setLoadingCandidatos(false);
-
-                // Opcional: Mostrar mensaje de error al usuario
                 setError('No se pudieron cargar los candidatos. Por favor, recarga la página.');
             }
         };
@@ -687,7 +693,7 @@ const LandingPage = () => {
 
             if (result.success) {
                 const data = result.data;
-                
+
                 setFormData(prev => ({
                     ...prev,
                     dni: data.numero,
