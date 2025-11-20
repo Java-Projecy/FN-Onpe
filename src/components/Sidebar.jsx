@@ -61,7 +61,6 @@ const Sidebar = ({ activeSection, setActiveSection, sidebarOpen, setSidebarOpen,
           name: 'Candidatos', 
           icon: UserCheck,
           description: 'Gestión de candidatos',
-          badge: '12'
         },
       ]
     },

@@ -245,7 +245,7 @@ const Candidatos = () => {
         </div>
       </motion.div>
 
-      {/* GRID DE CANDIDATOS - CON TIPO Y BARRA DE PROGRESO */}
+      {/* Cards de Candidatos - Más anchas con max-w actualizada y centradas */}
       <motion.div
         key={`${filtroTipo}-${terminoBusqueda}`}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -255,7 +255,7 @@ const Candidatos = () => {
       >
         {candidatosFiltrados.map((candidato) => {
           const tipo = normalizarTipo(candidato.tipo_eleccion);
-          const config = tipoConfig[tipo] || { label: 'Desconocido', color: 'bg-gray-500', bar: 'bg-gray-600' };
+          const config = tipoConfig[tipo] || { label: 'Desconocido', color: 'from-gray-400 to-gray-600', bar: 'bg-gray-500' };
           const esLider = liderActual?.id === candidato.id;
 
           return (
@@ -263,93 +263,89 @@ const Candidatos = () => {
               key={candidato.id}
               layout
               variants={itemVariants}
-              whileHover={{ y: -8, scale: 1.02 }}
-              className="group relative glass-effect rounded-2xl overflow-hidden hover:shadow-2xl transition-all"
+              whileHover={{ y: -8, scale: 1.01 }}
+              // Cambiado max-w-xs y md:max-w-sm a max-w-md y md:max-w-lg para hacer la card más ancha
+              className="relative rounded-2xl overflow-hidden group bg-white shadow-xl hover:shadow-2xl border border-slate-200 transition-all mx-auto w-full max-w-md md:max-w-lg"
             >
-              {/* Badge de Tipo de Elección (¡AHORA SÍ ESTÁ!) */}
-              <div className="absolute top-4 left-4 z-20">
-                <span className={`px-4 py-2 rounded-full text-xs font-bold text-white shadow-lg ${config.color}`}>
-                  {config.label}
-                </span>
-              </div>
+              {/* Top gradient + badge tipo */}
+              <div className={`absolute top-0 left-0 w-full h-32 z-0 bg-gradient-to-r ${config.color}`}></div>
+              {/* Badge tipo */}
+              <span className="absolute top-5 left-5 z-10 bg-white/80 px-4 py-1 rounded-full text-xs font-semibold shadow-md border border-white">
+                {config.label}
+              </span>
 
-              {/* Trofeo al Líder */}
+              {/* Trofeo líder */}
               {esLider && filtroTipo !== 'todos' && (
-                <div className="absolute top-4 right-4 z-20 animate-pulse">
-                  <Trophy className="text-yellow-500 drop-shadow-2xl" size={36} />
-                </div>
+                <span className="absolute top-5 right-5 z-10">
+                  <Trophy className="text-yellow-500 drop-shadow-xl animate-pulse" size={30} />
+                </span>
               )}
 
-              {/* Header con gradiente del tipo */}
-              <div className={`h-32 bg-gradient-to-br ${config.color} relative overflow-hidden`}>
-                <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-              </div>
-
-              <div className="p-6 -mt-16 relative z-10">
+              <div className="relative flex flex-col items-center pt-16 pb-10 px-6 z-10 text-base min-h-[340px]">
                 {/* Foto */}
-                <div className="w-28 h-28 mx-auto mb-4 rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
+                <div className="w-24 h-24 rounded-full shadow-lg border-4 border-white bg-slate-100 overflow-hidden -mt-12 mb-2 flex items-center justify-center">
                   {candidato.image_url ? (
-                    <img src={candidato.image_url} alt={candidato.nombre} className="w-full h-full object-cover" />
+                    <img
+                      src={candidato.image_url}
+                      alt={candidato.nombre}
+                      className="object-cover w-full h-full"
+                    />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-5xl font-bold text-white">
-                      {candidato.nombre?.charAt(0) || '?'}
-                    </div>
+                    <span className="text-4xl font-bold text-white w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-pink-500">
+                      {candidato.nombre?.charAt(0) || "?"}
+                    </span>
                   )}
                 </div>
-
-                {/* Nombre y Partido */}
-                <h3 className="text-xl font-bold text-center text-slate-800 mb-1">{candidato.nombre}</h3>
-                <p className="text-sm text-center font-medium bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                {/* Nombre */}
+                <h3 className="mt-2 text-lg font-extrabold text-slate-800 text-center">
+                  {candidato.nombre}
+                </h3>
+                {/* Partido */}
+                <div className="text-sm text-center font-medium bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1">
                   {candidato.partido}
-                </p>
-
-                {/* Barra de Progreso Electoral */}
-                <div className="my-5 p-4 bg-slate-50 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-3xl font-bold text-indigo-600">{candidato.porcentaje}%</p>
-                      <p className="text-sm text-slate-600">{formatNumber(candidato.votos)} votos</p>
-                    </div>
-                    {esLider && filtroTipo !== 'todos' && (
-                      <span className="text-xs font-bold text-yellow-600 uppercase tracking-wider bg-yellow-100 px-3 py-1 rounded-full">
-                        Líder
-                      </span>
-                    )}
+                </div>
+                {/* Votos y porcentaje */}
+                <div className="flex w-full justify-between items-center mb-2 mt-1">
+                  <div>
+                    <span className="block text-2xl font-bold text-indigo-700">{candidato.porcentaje}%</span>
+                    <span className="block text-xs text-slate-500">{formatNumber(candidato.votos)} votos</span>
                   </div>
-                  <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden shadow-inner">
+                  {esLider && filtroTipo !== 'todos' && (
+                    <span className="text-[11px] font-semibold text-yellow-900 bg-yellow-200 px-3 py-1 rounded-full shadow">Líder</span>
+                  )}
+                </div>
+                {/* Barra porcentaje */}
+                <div className="w-full mt-1 mb-3">
+                  <div className="w-full bg-slate-200 rounded-full h-3 relative overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${candidato.porcentaje}%` }}
-                      transition={{ duration: 1.3, ease: "easeOut" }}
-                      className={`h-full rounded-full ${config.bar} relative overflow-hidden`}
-                    >
-                      <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
-                    </motion.div>
+                      transition={{ duration: 1.1, ease: "easeOut" }}
+                      className={`h-full rounded-full ${config.bar} relative`}
+                    ></motion.div>
                   </div>
                 </div>
-
-                {/* Stats rápidas */}
-                <div className="grid grid-cols-3 gap-3 text-center text-sm mb-4">
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-slate-600">Propuestas</p>
-                    <p className="font-bold text-indigo-600 text-lg">{candidato.propuestas.length}</p>
+                {/* Datos extra rápidos */}
+                <div className="flex w-full justify-between items-center text-xs text-slate-500 mb-5">
+                  <div className="flex flex-col items-center flex-1 border-r border-slate-100 last:border-none">
+                    <span className="font-bold text-indigo-600 text-sm">{candidato.propuestas.length}</span>
+                    <span>Propuestas</span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-slate-600">Tipo</p>
-                    <p className="font-bold">{config.label}</p>
+                  <div className="flex flex-col items-center flex-1 border-r border-slate-100 last:border-none">
+                    <span className="font-bold text-slate-700 text-sm">{config.label}</span>
+                    <span>Tipo</span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-slate-600">Estado</p>
-                    <p className="font-bold text-green-600">Activo</p>
+                  <div className="flex flex-col items-center flex-1">
+                    <span className="font-bold text-green-600 text-sm">Activo</span>
+                    <span>Estado</span>
                   </div>
                 </div>
-
                 {/* Botón ver propuestas */}
                 <button
                   onClick={() => abrirModalPropuestas(candidato)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all font-medium shadow-lg"
+                  className="w-full flex items-center justify-center gap-2 py-2 mt-auto bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-xl shadow hover:from-blue-700 hover:to-indigo-800 transition-all"
                 >
-                  <Eye size={18} /> Ver Propuestas
+                  <Eye size={16} /> Ver Propuestas
                 </button>
               </div>
             </motion.div>
