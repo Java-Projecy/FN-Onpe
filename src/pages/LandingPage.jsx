@@ -687,7 +687,7 @@ const LandingPage = () => {
 
             if (result.success) {
                 const data = result.data;
-
+                
                 setFormData(prev => ({
                     ...prev,
                     dni: data.numero,
