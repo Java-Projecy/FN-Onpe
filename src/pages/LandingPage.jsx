@@ -1,8 +1,9 @@
 // sistema-electoral/src/pages/LandingPage.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Vote, CheckCircle, AlertCircle, Loader, User, MapPin, Phone, Mail, Shield, Lock, X, ChevronRight, FileText, Users, BarChart, Award, Globe, Zap, TrendingUp, ArrowRight, Star, Clock, Users2, Eye, Fingerprint, CheckSquare, MessageCircle, Send } from 'lucide-react';
+import { candidatosAPI, votantesAPI, votosPresidencialesAPI, votosRegionalesAPI, votosDistritalesAPI } from '../services/api';
+import { Vote, CheckCircle, AlertCircle, Loader, User, MapPin, Phone, Mail, Shield, Lock, X, ChevronRight, FileText, Users, BarChart, Award, Globe, Zap, TrendingUp, ArrowRight, Star, Clock, Users2, Eye, Fingerprint, CheckSquare, MessageCircle, Send, RefreshCw } from 'lucide-react';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -55,50 +56,50 @@ const LandingPage = () => {
     const [isTyping, setIsTyping] = useState(false);
 
     // Respuestas predefinidas del chatbot
-const chatbotResponses = {
-  'hola': '👋 ¡Hola! Bienvenido al Sistema de Votación Virtual de la ONPE. Estoy aquí para ayudarte con todo lo relacionado al proceso electoral. ¿Qué deseas saber hoy?',
-  
-  'cómo votar': '🗳️ Para emitir tu voto sigue estos pasos:\n1️⃣ Ingresa tu número de DNI.\n2️⃣ Verifica que tus datos personales sean correctos.\n3️⃣ Elige a tus candidatos en las categorías disponibles (presidencial, regional o distrital).\n4️⃣ Confirma tu selección para registrar tu voto.\n¡Y listo! Tu participación quedará registrada de forma segura.',
-  
-  'requisitos': '📋 Para poder votar necesitas:\n- Ser ciudadano(a) peruano(a).\n- Tener 18 años cumplidos.\n- Contar con un DNI vigente.\nSi cumples con estos requisitos, podrás participar en el proceso electoral sin problemas.',
-  
-  'candidatos': '👥 En esta plataforma podrás consultar a los candidatos presidenciales, regionales y distritales. Cada perfil incluye su foto, partido político y principales propuestas. Te recomiendo revisarlos antes de emitir tu voto.',
-  
-  'seguridad': '🔐 La seguridad es nuestra prioridad. El sistema utiliza **cifrado AES-256**, **autenticación biométrica** y conexiones **seguras (HTTPS)** para proteger tus datos. Además, todos los votos son **anónimos e inalterables**.',
-  
-  'horario': '🕒 La plataforma de votación está disponible las 24 horas del día durante el periodo electoral oficial. Recuerda ingresar y votar antes de la fecha límite establecida por la ONPE.',
-  
-  'ayuda': '💡 Puedo asistirte con la siguiente información:\n- Cómo votar\n- Requisitos para votar\n- Información de candidatos\n- Seguridad del sistema\n- Horarios de votación\n- Contacto con soporte\n¿Sobre qué tema te gustaría saber más?',
-  
-  'contacto': '📞 Si necesitas asistencia personalizada, comunícate con nuestro equipo de soporte:\n- Línea gratuita: 0800-12345\n- Correo: soporte@onpe.gob.pe\n- Horario de atención: Lunes a domingo, de 8:00 a.m. a 8:00 p.m.\n¿Deseas que te ayude con algo más?'
-};
+    const chatbotResponses = {
+        'hola': '👋 ¡Hola! Bienvenido al Sistema de Votación Virtual de la ONPE. Estoy aquí para ayudarte con todo lo relacionado al proceso electoral. ¿Qué deseas saber hoy?',
 
-// 🔍 Función que detecta el mensaje del usuario y busca coincidencias
-function getChatbotResponse(userInput) {
-  const input = userInput.toLowerCase().trim();
+        'cómo votar': '🗳️ Para emitir tu voto sigue estos pasos:\n1️⃣ Ingresa tu número de DNI.\n2️⃣ Verifica que tus datos personales sean correctos.\n3️⃣ Elige a tus candidatos en las categorías disponibles (presidencial, regional o distrital).\n4️⃣ Confirma tu selección para registrar tu voto.\n¡Y listo! Tu participación quedará registrada de forma segura.',
 
-  // Palabras clave asociadas a cada tema
-  const keywords = {
-    'hola': ['hola', 'buenos días', 'buenas tardes', 'hey', 'saludos'],
-    'cómo votar': ['votar', 'emitir voto', 'cómo votar', 'quiero votar', 'proceso de votación'],
-    'requisitos': ['requisitos', 'qué necesito', 'condiciones', 'puedo votar', 'edad mínima'],
-    'candidatos': ['candidatos', 'postulantes', 'ver candidatos', 'lista de candidatos', 'presidenciales', 'regionales', 'distritales'],
-    'seguridad': ['seguridad', 'protegido', 'datos', 'cifrado', 'privacidad'],
-    'horario': ['horario', 'hora', 'cuándo puedo votar', 'disponible', 'tiempo'],
-    'ayuda': ['ayuda', 'asistencia', 'soporte', 'no entiendo', 'qué puedo hacer'],
-    'contacto': ['contacto', 'llamar', 'correo', 'soporte', 'teléfono']
-  };
+        'requisitos': '📋 Para poder votar necesitas:\n- Ser ciudadano(a) peruano(a).\n- Tener 18 años cumplidos.\n- Contar con un DNI vigente.\nSi cumples con estos requisitos, podrás participar en el proceso electoral sin problemas.',
 
-  // Buscar coincidencia por palabra clave
-  for (const key in keywords) {
-    if (keywords[key].some(word => input.includes(word))) {
-      return chatbotResponses[key];
+        'candidatos': '👥 En esta plataforma podrás consultar a los candidatos presidenciales, regionales y distritales. Cada perfil incluye su foto, partido político y principales propuestas. Te recomiendo revisarlos antes de emitir tu voto.',
+
+        'seguridad': '🔐 La seguridad es nuestra prioridad. El sistema utiliza **cifrado AES-256**, **autenticación biométrica** y conexiones **seguras (HTTPS)** para proteger tus datos. Además, todos los votos son **anónimos e inalterables**.',
+
+        'horario': '🕒 La plataforma de votación está disponible las 24 horas del día durante el periodo electoral oficial. Recuerda ingresar y votar antes de la fecha límite establecida por la ONPE.',
+
+        'ayuda': '💡 Puedo asistirte con la siguiente información:\n- Cómo votar\n- Requisitos para votar\n- Información de candidatos\n- Seguridad del sistema\n- Horarios de votación\n- Contacto con soporte\n¿Sobre qué tema te gustaría saber más?',
+
+        'contacto': '📞 Si necesitas asistencia personalizada, comunícate con nuestro equipo de soporte:\n- Línea gratuita: 0800-12345\n- Correo: soporte@onpe.gob.pe\n- Horario de atención: Lunes a domingo, de 8:00 a.m. a 8:00 p.m.\n¿Deseas que te ayude con algo más?'
+    };
+
+    // 🔍 Función que detecta el mensaje del usuario y busca coincidencias
+    function getChatbotResponse(userInput) {
+        const input = userInput.toLowerCase().trim();
+
+        // Palabras clave asociadas a cada tema
+        const keywords = {
+            'hola': ['hola', 'buenos días', 'buenas tardes', 'hey', 'saludos'],
+            'cómo votar': ['votar', 'emitir voto', 'cómo votar', 'quiero votar', 'proceso de votación'],
+            'requisitos': ['requisitos', 'qué necesito', 'condiciones', 'puedo votar', 'edad mínima'],
+            'candidatos': ['candidatos', 'postulantes', 'ver candidatos', 'lista de candidatos', 'presidenciales', 'regionales', 'distritales'],
+            'seguridad': ['seguridad', 'protegido', 'datos', 'cifrado', 'privacidad'],
+            'horario': ['horario', 'hora', 'cuándo puedo votar', 'disponible', 'tiempo'],
+            'ayuda': ['ayuda', 'asistencia', 'soporte', 'no entiendo', 'qué puedo hacer'],
+            'contacto': ['contacto', 'llamar', 'correo', 'soporte', 'teléfono']
+        };
+
+        // Buscar coincidencia por palabra clave
+        for (const key in keywords) {
+            if (keywords[key].some(word => input.includes(word))) {
+                return chatbotResponses[key];
+            }
+        }
+
+        // Respuesta por defecto si no se entiende el mensaje
+        return '🤔 Lo siento, no entendí tu consulta. Puedes pedirme ayuda escribiendo "ayuda" o decirme sobre qué tema deseas información (por ejemplo, "requisitos" o "cómo votar").';
     }
-  }
-
-  // Respuesta por defecto si no se entiende el mensaje
-  return '🤔 Lo siento, no entendí tu consulta. Puedes pedirme ayuda escribiendo "ayuda" o decirme sobre qué tema deseas información (por ejemplo, "requisitos" o "cómo votar").';
-}
 
 
     // Función para enviar mensaje en el chatbot
@@ -215,145 +216,120 @@ function getChatbotResponse(userInput) {
     };
 
     // Candidatos por tipo de elección con imágenes reales y logos de partidos
-    const candidatos = {
-        presidencial: [
-            {
-                id: 1,
-                nombre: 'Pedro Castillo',
-                partido: 'Perú Libre',
-                color: 'red',
-                photo: '/img/PedroCastillo.png',
-                logo: '/Logo/PeruLibre.png',
-                propuestas: '1. Nueva Constitución con participación popular.\n2. Nacionalización de los recursos estratégicos.\n3. Aumento del salario mínimo y bonos sociales.',
-                experiencia: 'Profesor y sindicalista',
-                educacion: 'Universidad Nacional de Educación'
-            },
-            {
-                id: 2,
-                nombre: 'Keiko Fujimori',
-                partido: 'Fuerza Popular',
-                color: 'orange',
-                photo: '/img/KeikoFujimori.png',
-                logo: '/Logo/FuerzaPopular.png',
-                propuestas: '1. Mantener la Constitución de 1993.\n2. Fuerte impulso a la inversión privada.\n3. Políticas de seguridad mano dura contra la delincuencia.',
-                experiencia: 'Congresista de la República',
-                educacion: 'Universidad de Boston, Columbia University'
-            },
-            {
-                id: 3,
-                nombre: 'Rafael López Aliaga',
-                partido: 'Renovación Popular',
-                color: 'blue',
-                photo: '/img/RafaelLopez.png',
-                logo: '/Logo/Renovacion.png',
-                propuestas: '1. Implementación del "Perú Bicentenario".\n2. Reducción de impuestos y simplificación tributaria.\n3. Eliminación de vacunas obligatorias y libertad de elección.',
-                experiencia: 'Empresario y exalcalde de Miraflores',
-                educacion: 'Universidad de Piura, Universidad del Pacífico'
-            },
-            {
-                id: 4,
-                nombre: 'Hernando de Soto',
-                partido: 'Avanza País',
-                color: 'purple',
-                photo: '/img/HernandoSoto.png',
-                logo: '/Logo/AvanzaPais.png',
-                propuestas: '1. Formalización de la propiedad informal.\n2. Creación de millones de empleos formales.\n3. Descentralización y empoderamiento de los gobiernos locales.',
-                experiencia: 'Economista y presidente del ILD',
-                educacion: 'London School of Economics'
+    const [candidatos, setCandidatos] = useState({
+        presidencial: [],
+        regional: [],
+        distrital: []
+    });
+    const [loadingCandidatos, setLoadingCandidatos] = useState(true);
+
+    useEffect(() => {
+        const cargarCandidatos = async () => {
+            try {
+                setLoadingCandidatos(true);
+                const response = await candidatosAPI.getAll();
+
+                console.log('📋 Candidatos cargados desde API:', response.data);
+
+                // Agrupar candidatos por tipo de elección
+                const candidatosPorTipo = {
+                    presidencial: [],
+                    regional: [],
+                    distrital: []
+                };
+
+                response.data.forEach(candidato => {
+                    const tipo = candidato.tipoEleccion?.toLowerCase() || candidato.tipo_eleccion?.toLowerCase();
+
+                    // Mapear el candidato al formato que espera el componente
+                    const candidatoMapeado = {
+                        id: candidato.id,
+                        nombre: candidato.nombre || candidato.name,
+                        partido: candidato.partido || candidato.party,
+                        color: obtenerColorPorPartido(candidato.partido || candidato.party),
+                        photo: candidato.imageUrl || candidato.image_url || 'https://via.placeholder.com/150',
+                        logo: candidato.logoPartido || candidato.logo || generarLogoPartido(candidato.partido || candidato.party),
+                        propuestas: formatearPropuestas(candidato.propuestas || candidato.proposals),
+                        experiencia: candidato.experiencia || 'Candidato registrado',
+                        educacion: candidato.educacion || 'Información no disponible'
+                    };
+
+                    if (tipo === 'presidencial') {
+                        candidatosPorTipo.presidencial.push(candidatoMapeado);
+                    } else if (tipo === 'regional') {
+                        candidatosPorTipo.regional.push(candidatoMapeado);
+                    } else if (tipo === 'distrital') {
+                        candidatosPorTipo.distrital.push(candidatoMapeado);
+                    }
+                });
+
+                console.log('✅ Candidatos agrupados:', candidatosPorTipo);
+                setCandidatos(candidatosPorTipo);
+                setLoadingCandidatos(false);
+
+            } catch (error) {
+                console.error('❌ Error al cargar candidatos:', error);
+                setLoadingCandidatos(false);
+
+                // Opcional: Mostrar mensaje de error al usuario
+                setError('No se pudieron cargar los candidatos. Por favor, recarga la página.');
             }
-        ],
-        regional: [
-            {
-                id: 5,
-                nombre: 'Luis Sánchez',
-                partido: 'Frente Regional',
-                color: 'teal',
-                photo: 'https://randomuser.me/api/portraits/men/32.jpg',
-                logo: 'https://placehold.co/40x40/teal/white?text=FR',
-                propuestas: '1. Desarrollo turístico sostenible para la región.\n2. Mejorar la conectividad vial entre provincias.\n3. Promover la cultura y las artes locales.',
-                experiencia: 'Exgobernador regional',
-                educacion: 'Universidad Nacional Mayor de San Marcos'
-            },
-            {
-                id: 6,
-                nombre: 'Carmen Vargas',
-                partido: 'Unidad Regional',
-                color: 'orange',
-                photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-                logo: 'https://placehold.co/40x40/orange/white?text=UR',
-                propuestas: '1. Impulsar la agroindustria regional.\n2. Crear un programa de becas para estudiantes talentosos.\n3. Fortalecer la gestión transparente de los recursos.',
-                experiencia: 'Gerente de desarrollo social',
-                educacion: 'Universidad Nacional del Centro del Perú'
-            },
-            {
-                id: 7,
-                nombre: 'Roberto Díaz',
-                partido: 'Desarrollo Regional',
-                color: 'cyan',
-                photo: 'https://randomuser.me/api/portraits/men/65.jpg',
-                logo: 'https://placehold.co/40x40/cyan/white?text=DR',
-                propuestas: '1. Electrificación de todas las comunidades rurales.\n2. Fomentar el comercio electrónico local.\n3. Proteger las reservas naturales y áreas de conservación.',
-                experiencia: 'Ingeniero y excongresista',
-                educacion: 'Universidad Nacional de Ingeniería'
-            },
-            {
-                id: 8,
-                nombre: 'Patricia Morales',
-                partido: 'Fuerza Regional',
-                color: 'pink',
-                photo: 'https://randomuser.me/api/portraits/women/90.jpg',
-                logo: 'https://placehold.co/40x40/pink/white?text=FR',
-                propuestas: '1. Modernizar los hospitales regionales.\n2. Implementar programas de vivienda social.\n3. Apoyar a los emprendedores locales con microcréditos.',
-                experiencia: 'Alcaldesa provincial',
-                educacion: 'Universidad Peruana Cayetano Heredia'
+        };
+
+        cargarCandidatos();
+    }, []);
+
+    // 5️⃣ Funciones auxiliares para mapear datos
+    const obtenerColorPorPartido = (partido) => {
+        const coloresPorPartido = {
+            'Perú Libre': 'red',
+            'Fuerza Popular': 'orange',
+            'Renovación Popular': 'blue',
+            'Avanza País': 'purple',
+            'Frente Regional': 'teal',
+            'Unidad Regional': 'orange',
+            'Desarrollo Regional': 'cyan',
+            'Fuerza Regional': 'pink',
+            'Partido Distrital': 'indigo',
+            'Movimiento Vecinal': 'yellow',
+            'Unidad Distrital': 'lime',
+            'Frente Distrital': 'amber'
+        };
+
+        return coloresPorPartido[partido] || 'slate';
+    };
+
+    const generarLogoPartido = (partido) => {
+        // Generar un placeholder con las iniciales del partido
+        const iniciales = partido.split(' ').map(p => p[0]).join('').substring(0, 2);
+        return `https://placehold.co/40x40/4F46E5/white?text=${iniciales}`;
+    };
+
+    const formatearPropuestas = (propuestas) => {
+        if (!propuestas) return 'Sin propuestas registradas';
+
+        if (Array.isArray(propuestas)) {
+            // Si es un array de objetos con estructura compleja
+            if (propuestas.length > 0 && typeof propuestas[0] === 'object') {
+                return propuestas.map((p, i) =>
+                    `${i + 1}. ${p.titulo || p.descripcion || 'Propuesta sin título'}`
+                ).join('\n');
             }
-        ],
-        distrital: [
-            {
-                id: 9,
-                nombre: 'Miguel Ángel',
-                partido: 'Partido Distrital',
-                color: 'indigo',
-                photo: 'https://randomuser.me/api/portraits/men/36.jpg',
-                logo: 'https://placehold.co/40x40/indigo/white?text=PD',
-                propuestas: '1. Más parques y áreas verdes para el distrito.\n2. Mejorar la recolección de residuos y reciclaje.\n3. Seguridad ciudadana con más patrullajes nocturnos.',
-                experiencia: 'Regidor municipal',
-                educacion: 'Universidad Nacional de San Agustín'
-            },
-            {
-                id: 10,
-                nombre: 'Laura Fernández',
-                partido: 'Movimiento Vecinal',
-                color: 'yellow',
-                photo: 'https://randomuser.me/api/portraits/women/33.jpg',
-                logo: 'https://placehold.co/40x40/yellow/black?text=MV',
-                propuestas: '1. Programas deportivos y culturales para jóvenes.\n2. Reparación de vías y aceras en toda la comunidad.\n3. Apoyo a adultos mayores con centros diurnos.',
-                experiencia: 'Líder comunitaria',
-                educacion: 'Universidad Nacional de Trujillo'
-            },
-            {
-                id: 11,
-                nombre: 'Jorge Ramírez',
-                partido: 'Unidad Distrital',
-                color: 'lime',
-                photo: 'https://randomuser.me/api/portraits/men/68.jpg',
-                logo: 'https://placehold.co/40x40/lime/black?text=UD',
-                propuestas: '1. Saneamiento básico para todas las zonas.\n2. Educación vial y seguridad para peatones y ciclistas.\n3. Promover la participación ciudadana en las decisiones.',
-                experiencia: 'Abogado y exregidor',
-                educacion: 'Universidad Nacional de San Antonio Abad'
-            },
-            {
-                id: 12,
-                nombre: 'Sofía Herrera',
-                partido: 'Frente Distrital',
-                color: 'amber',
-                photo: 'https://randomuser.me/api/portraits/women/50.jpg',
-                logo: 'https://placehold.co/40x40/amber/black?text=FD',
-                propuestas: '1. Mercados locales ordenados y con servicios.\n2. Limpieza y mantenimiento de espacios públicos.\n3. Programas de alfabetización y capacitación técnica.',
-                experiencia: 'Directora de escuela',
-                educacion: 'Universidad Nacional Pedro Ruiz Gallo'
+            // Si es un array simple de strings
+            return propuestas.map((p, i) => `${i + 1}. ${p}`).join('\n');
+        }
+
+        if (typeof propuestas === 'string') {
+            try {
+                // Intentar parsear si es JSON string
+                const parsed = JSON.parse(propuestas);
+                return formatearPropuestas(parsed);
+            } catch {
+                return propuestas;
             }
-        ]
+        }
+
+        return 'Sin propuestas registradas';
     };
 
     // Componente mejorado para la tarjeta del candidato
@@ -496,156 +472,184 @@ function getChatbotResponse(userInput) {
                             </motion.button>
                         </div>
                     </div>
-                <div className="p-8">
-                    <motion.h4 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"
-                    >
-                        <FileText size={22} style={{ color: headerColor }} />
-                        Plan de Gobierno
-                    </motion.h4>
-                    <div className="space-y-3 mb-6">
-                        {candidate.propuestas.split('\n').map((propuesta, index) => (
+                    <div className="p-8">
+                        <motion.h4
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2"
+                        >
+                            <FileText size={22} style={{ color: headerColor }} />
+                            Plan de Gobierno
+                        </motion.h4>
+                        <div className="space-y-3 mb-6">
+                            {candidate.propuestas.split('\n').map((propuesta, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.4 + index * 0.1 }}
+                                    className="flex items-start gap-3"
+                                >
+                                    <div style={{ backgroundColor: `${headerColor}22` }} className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <span style={{ color: headerColor }} className="text-xs font-bold">{index + 1}</span>
+                                    </div>
+                                    <p className="text-gray-700 text-sm leading-relaxed">{propuesta}</p>
+                                </motion.div>
+                            ))}
+                        </div>
+
+                        {candidate.experiencia && (
                             <motion.div
-                                key={index}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.4 + index * 0.1 }}
-                                className="flex items-start gap-3"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
+                                className="mb-5 p-4 bg-gray-50 rounded-lg"
                             >
-                                <div style={{ backgroundColor: `${headerColor}22` }} className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <span style={{ color: headerColor }} className="text-xs font-bold">{index + 1}</span>
-                                </div>
-                                <p className="text-gray-700 text-sm leading-relaxed">{propuesta}</p>
+                                <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                    <Award size={18} style={{ color: headerColor }} />
+                                    Experiencia
+                                </h5>
+                                <p className="text-gray-700 text-sm leading-relaxed">{candidate.experiencia}</p>
                             </motion.div>
-                        ))}
+                        )}
+
+                        {candidate.educacion && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6 }}
+                                className="mb-6 p-4 bg-gray-50 rounded-lg"
+                            >
+                                <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                    <Users size={18} style={{ color: headerColor }} />
+                                    Educación
+                                </h5>
+                                <p className="text-gray-700 text-sm leading-relaxed">{candidate.educacion}</p>
+                            </motion.div>
+                        )}
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.7 }}
+                            className="pt-6 border-t border-gray-200"
+                        >
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={onClose}
+                                className="w-full px-4 py-3 rounded-xl font-medium transition-colors text-white"
+                                style={{ backgroundColor: headerColor }}
+                            >
+                                Cerrar
+                            </motion.button>
+                        </motion.div>
                     </div>
-                    
-                    {candidate.experiencia && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                            className="mb-5 p-4 bg-gray-50 rounded-lg"
-                        >
-                            <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <Award size={18} style={{ color: headerColor }} />
-                                Experiencia
-                            </h5>
-                            <p className="text-gray-700 text-sm leading-relaxed">{candidate.experiencia}</p>
-                        </motion.div>
-                    )}
-                    
-                    {candidate.educacion && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="mb-6 p-4 bg-gray-50 rounded-lg"
-                        >
-                            <h5 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <Users size={18} style={{ color: headerColor }} />
-                                Educación
-                            </h5>
-                            <p className="text-gray-700 text-sm leading-relaxed">{candidate.educacion}</p>
-                        </motion.div>
-                    )}
-                    
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.7 }}
-                        className="pt-6 border-t border-gray-200"
-                    >
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={onClose}
-                            className="w-full px-4 py-3 rounded-xl font-medium transition-colors text-white"
-                            style={{ backgroundColor: headerColor }}
-                        >
-                            Cerrar
-                        </motion.button>
-                    </motion.div>
-                </div>
+                </motion.div>
             </motion.div>
-        </motion.div>
         );
     };
 
     // Componente mejorado para el modal de éxito
-    const SuccessModal = () => (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
-        >
+    const SuccessModal = () => {
+        const votosEmitidos = [
+            selectedCandidates.presidencial && 'Presidencial',
+            selectedCandidates.regional && 'Regional',
+            selectedCandidates.distrital && 'Distrital'
+        ].filter(Boolean);
+
+        return (
             <motion.div
-                variants={modalVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
             >
-                <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.1 }}
-                        className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4"
-                    >
-                        <CheckCircle className="text-green-500" size={40} />
-                    </motion.div>
-                    <motion.h3
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-2xl font-bold mb-2"
-                    >
-                        ¡Voto Registrado con Éxito!
-                    </motion.h3>
-                    <motion.p
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-sm opacity-90"
-                    >
-                        Su participación ha sido registrada en el sistema electoral
-                    </motion.p>
-                </div>
-                <div className="p-6 text-center">
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.4 }}
-                        className="text-gray-700 mb-4"
-                    >
-                        Gracias por ejercer su derecho al voto. Su participación es fundamental para fortalecer nuestra democracia.
-                    </motion.p>
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.5 }}
-                        className="flex items-center justify-center gap-2 mb-4"
-                    >
-                        <Fingerprint className="text-gray-500" size={16} />
-                        <span className="text-xs text-gray-500">ID de Voto: {Math.random().toString(36).substring(2, 15).toUpperCase()}</span>
-                    </motion.div>
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={closeSuccessModal}
-                        className="w-full px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all font-medium"
-                    >
-                        Cerrar
-                    </motion.button>
-                </div>
+                <motion.div
+                    variants={modalVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+                >
+                    <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center">
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.1 }}
+                            className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4"
+                        >
+                            <CheckCircle className="text-green-500" size={40} />
+                        </motion.div>
+                        <motion.h3
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-2xl font-bold mb-2"
+                        >
+                            ¡Voto Registrado con Éxito!
+                        </motion.h3>
+                        <motion.p
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="text-sm opacity-90"
+                        >
+                            Su participación ha sido registrada en el sistema electoral
+                        </motion.p>
+                    </div>
+                    <div className="p-6">
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className="text-gray-700 mb-4"
+                        >
+                            Gracias por ejercer su derecho al voto. Su participación es fundamental para fortalecer nuestra democracia.
+                        </motion.p>
+
+                        {/* Mostrar detalle de votos */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Votos registrados:</p>
+                            <div className="space-y-2">
+                                {votosEmitidos.map((tipo, index) => (
+                                    <motion.div
+                                        key={tipo}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.5 + index * 0.1 }}
+                                        className="flex items-center gap-2 text-sm text-gray-600"
+                                    >
+                                        <CheckCircle className="text-green-500" size={16} />
+                                        <span>{tipo}</span>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                            className="flex items-center justify-center gap-2 mb-4"
+                        >
+                            <Fingerprint className="text-gray-500" size={16} />
+                            <span className="text-xs text-gray-500">ID de Voto: {Math.random().toString(36).substring(2, 15).toUpperCase()}</span>
+                        </motion.div>
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={closeSuccessModal}
+                            className="w-full px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all font-medium"
+                        >
+                            Cerrar
+                        </motion.button>
+                    </div>
+                </motion.div>
             </motion.div>
-        </motion.div>
-    );
+        );
+    };
 
     const handleDniChange = async (e) => {
         const dni = e.target.value.replace(/\D/g, '').slice(0, 8);
@@ -683,7 +687,7 @@ function getChatbotResponse(userInput) {
 
             if (result.success) {
                 const data = result.data;
-                
+
                 setFormData(prev => ({
                     ...prev,
                     dni: data.numero,
@@ -740,23 +744,92 @@ function getChatbotResponse(userInput) {
         }
     };
 
-    const handleSubmit = () => {
-        const hasSelectedCandidate = Object.values(selectedCandidates).some(candidate => candidate !== '');
-
-        if (!hasSelectedCandidate) {
+    const handleSubmit = async () => {
+        if (!Object.values(selectedCandidates).some(c => c !== '')) {
             setError('Debes seleccionar al menos un candidato');
             return;
         }
-
-        console.log('Votos registrados:', {
-            ...formData,
-            candidatos: selectedCandidates
-        });
-        
-        // Mostramos el modal de éxito
-        setShowSuccessModal(true);
+    
+        if (!dniVerified) {
+            setError('Debes verificar tu DNI primero');
+            return;
+        }
+    
+        setLoading(true);
+        setError('');
+    
+        try {
+            // 1. Crear votante con valores garantizados NO nulos ni vacíos
+            const votantePayload = {
+                dni: formData.dni.trim(),
+                nombres: (formData.nombres || "Ciudadano Anónimo").trim(),
+                apellido_paterno: (formData.apellido_paterno || "VOTANTE").trim(),
+                apellido_materno: (formData.apellido_materno || "VIRTUAL").trim(),
+                departamento: formData.departamento || "LIMA",  // ← OBLIGATORIO
+                provincia: formData.provincia || "LIMA",
+                distrito: formData.distrito || "LIMA",
+                telefono: formData.telefono?.trim() || null,
+                email: formData.email?.trim() || null
+            };
+    
+            console.log("ENVIANDO VOTANTE:", votantePayload); // ← ESTO ES CLAVE
+    
+            const votanteResponse = await votantesAPI.create(votantePayload);
+            const votanteCreado = votanteResponse.data;
+    
+            // Helper para obtener candidato completo
+            const getCandidatoCompleto = (nombre, tipo) => {
+                const lista = tipo === 'presidencial' ? candidatos.presidencial :
+                    tipo === 'regional' ? candidatos.regional : candidatos.distrital;
+                return lista.find(c => c.nombre === nombre);
+            };
+    
+            const votosPromises = [];
+    
+            if (selectedCandidates.presidencial) {
+                const candidato = getCandidatoCompleto(selectedCandidates.presidencial, 'presidencial');
+                votosPromises.push(votosPresidencialesAPI.create({
+                    votante: votanteCreado,
+                    candidato: candidato,
+                    dniVotante: formData.dni,
+                    departamento: formData.departamento || "LIMA"
+                }));
+            }
+    
+            if (selectedCandidates.regional) {
+                const candidato = getCandidatoCompleto(selectedCandidates.regional, 'regional');
+                votosPromises.push(votosRegionalesAPI.create({
+                    votante: votanteCreado,
+                    candidato: candidato,
+                    dniVotante: formData.dni,
+                    departamento: formData.departamento || "LIMA"
+                }));
+            }
+    
+            if (selectedCandidates.distrital) {
+                const candidato = getCandidatoCompleto(selectedCandidates.distrital, 'distrital');
+                votosPromises.push(votosDistritalesAPI.create({
+                    votante: votanteCreado,
+                    candidato: candidato,
+                    dniVotante: formData.dni,
+                    departamento: formData.departamento || "LIMA"
+                }));
+            }
+    
+            await Promise.all(votosPromises);
+            setShowSuccessModal(true);
+    
+        } catch (err) {
+            console.error("Error completo:", err);
+            if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Error al registrar el voto. Posiblemente ya votaste con este DNI.');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
-
     const closeModal = () => {
         setShowVotingForm(false);
         setError('');
@@ -810,17 +883,17 @@ function getChatbotResponse(userInput) {
                 <div className="max-w-7xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                <motion.div
-                    whileHover={{ scale: 1.05, rotate: 5 }}
-                    className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white"
-                >
-                    {/* Logo importado desde la carpeta public */}
-                    <img
-                        src="/Logo/icono.png"
-                        alt="Logo ONPE"
-                        className="w-full h-full object-contain"
-                    />
-                </motion.div>
+                            <motion.div
+                                whileHover={{ scale: 1.05, rotate: 5 }}
+                                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden bg-white"
+                            >
+                                {/* Logo importado desde la carpeta public */}
+                                <img
+                                    src="/Logo/icono.png"
+                                    alt="Logo ONPE"
+                                    className="w-full h-full object-contain"
+                                />
+                            </motion.div>
                             <div>
                                 <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-600 to-slate-700 bg-clip-text text-transparent">
                                     ONPE - Sistema de Votación
@@ -975,165 +1048,176 @@ function getChatbotResponse(userInput) {
                 </div>
             </section>
 
-          {/* Sección de Candidatos Destacados mejorada */}
-<section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100 z-10 relative">
-    <div className="max-w-7xl mx-auto px-4">
-        <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-        >
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Conoce a los Candidatos</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Revisa las propuestas de los principales candidatos para tomar una decisión informada
-            </p>
-        </motion.div>
-
-        {/* Pestañas de navegación */}
-        <div className="flex justify-center mb-8">
-            <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-md p-1 inline-flex">
-                {[
-                    { id: 'presidencial', label: 'Presidencial', icon: Vote },
-                    { id: 'regional', label: 'Regional', icon: MapPin },
-                    { id: 'distrital', label: 'Distrital', icon: User }
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-6 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                            activeTab === tab.id
-                                ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md'
-                                : 'text-black-600 hover:text-black-900'
-                        }`}
-                    >
-                        <tab.icon size={16} />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-        </div>
-
-        {/* Contenedor de candidatos con clave única para forzar rerender */}
-        <motion.div
-            key={activeTab} // Esto fuerza un rerender completo al cambiar de pestaña
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-            {candidatos[activeTab].slice(0, 4).map((candidato, index) => {
-                // Función para obtener la clase de gradiente
-                const getGradientClass = (color) => {
-                    const gradientMap = {
-                        red: 'bg-gradient-to-r from-red-400 to-red-600',
-                        orange: 'bg-gradient-to-r from-orange-400 to-orange-600',
-                        blue: 'bg-gradient-to-r from-blue-400 to-blue-600',
-                        purple: 'bg-gradient-to-r from-purple-400 to-purple-600',
-                        teal: 'bg-gradient-to-r from-teal-400 to-teal-600',
-                        cyan: 'bg-gradient-to-r from-cyan-400 to-cyan-600',
-                        pink: 'bg-gradient-to-r from-pink-400 to-pink-600',
-                        indigo: 'bg-gradient-to-r from-indigo-400 to-indigo-600',
-                        yellow: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
-                        lime: 'bg-gradient-to-r from-lime-400 to-lime-600',
-                        amber: 'bg-gradient-to-r from-amber-400 to-amber-600'
-                    };
-                    return gradientMap[color] || 'bg-gradient-to-r from-gray-400 to-gray-600';
-                };
-
-                const gradientClass = getGradientClass(candidato.color);
-
-                return (
+            {/* Sección de Candidatos Destacados mejorada */}
+            <section className="py-16 bg-gradient-to-br from-gray-50 to-gray-100 z-10 relative">
+                <div className="max-w-7xl mx-auto px-4">
                     <motion.div
-                        key={candidato.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.1, duration: 0.4 }}
-                        whileHover={{ y: -8, scale: 1.03 }}
-                        className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        viewport={{ once: true }}
+                        className="text-center mb-12"
                     >
-                        {/* Barra de color superior */}
-                        <div className={`h-3 ${gradientClass}`}></div>
-                        
-                        <div className="p-5">
-                            <div className="flex flex-col items-center mb-4">
-                                <div className="relative mb-4">
+                        <h2 className="text-4xl font-bold text-gray-900 mb-4">Conoce a los Candidatos</h2>
+                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                            Revisa las propuestas de los principales candidatos para tomar una decisión informada
+                        </p>
+                    </motion.div>
+
+                    {/* Pestañas de navegación */}
+                    <div className="flex justify-center mb-8">
+                        <div className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-md p-1 inline-flex">
+                            {[
+                                { id: 'presidencial', label: 'Presidencial', icon: Vote },
+                                { id: 'regional', label: 'Regional', icon: MapPin },
+                                { id: 'distrital', label: 'Distrital', icon: User }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-6 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === tab.id
+                                        ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md'
+                                        : 'text-black-600 hover:text-black-900'
+                                        }`}
+                                >
+                                    <tab.icon size={16} />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Mostrar loading o candidatos */}
+                    {loadingCandidatos ? (
+                        <div className="text-center py-16">
+                            <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="inline-block"
+                            >
+                                <RefreshCw className="text-slate-600" size={48} />
+                            </motion.div>
+                            <p className="text-gray-600 mt-4 text-lg">Cargando candidatos...</p>
+                        </div>
+                    ) : candidatos[activeTab].length === 0 ? (
+                        <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+                            <Users size={64} className="mx-auto text-gray-300 mb-4" />
+                            <h3 className="text-xl font-bold text-gray-600 mb-2">
+                                No hay candidatos {activeTab}es registrados
+                            </h3>
+                            <p className="text-gray-500">
+                                Los candidatos aparecerán aquí una vez sean registrados en el sistema
+                            </p>
+                        </div>
+                    ) : (
+                        <motion.div
+                            key={activeTab}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                        >
+                            {candidatos[activeTab].slice(0, 4).map((candidato, index) => {
+                                const getGradientClass = (color) => {
+                                    const gradientMap = {
+                                        red: 'bg-gradient-to-r from-red-400 to-red-600',
+                                        orange: 'bg-gradient-to-r from-orange-400 to-orange-600',
+                                        blue: 'bg-gradient-to-r from-blue-400 to-blue-600',
+                                        purple: 'bg-gradient-to-r from-purple-400 to-purple-600',
+                                        teal: 'bg-gradient-to-r from-teal-400 to-teal-600',
+                                        cyan: 'bg-gradient-to-r from-cyan-400 to-cyan-600',
+                                        pink: 'bg-gradient-to-r from-pink-400 to-pink-600',
+                                        indigo: 'bg-gradient-to-r from-indigo-400 to-indigo-600',
+                                        yellow: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
+                                        lime: 'bg-gradient-to-r from-lime-400 to-lime-600',
+                                        amber: 'bg-gradient-to-r from-amber-400 to-amber-600',
+                                        slate: 'bg-gradient-to-r from-slate-400 to-slate-600'
+                                    };
+                                    return gradientMap[color] || 'bg-gradient-to-r from-gray-400 to-gray-600';
+                                };
+
+                                const gradientClass = getGradientClass(candidato.color);
+
+                                return (
                                     <motion.div
-                                        whileHover={{ scale: 1.1 }}
-                                        className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden"
+                                        key={candidato.id}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: index * 0.1, duration: 0.4 }}
+                                        whileHover={{ y: -8, scale: 1.03 }}
+                                        className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300"
                                     >
-                                        <img
-                                            src={candidato.photo}
-                                            alt={candidato.nombre}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                // Si la imagen falla, usar avatar generado
-                                                e.target.style.display = 'none';
-                                                e.target.nextSibling.style.display = 'flex';
-                                            }}
-                                        />
-                                        {/* Avatar de respaldo */}
-                                        <div 
-                                            className="w-full h-full bg-gradient-to-br from-slate-500 to-slate-700 rounded-full flex items-center justify-center text-white font-bold text-lg hidden"
-                                            style={{ display: 'none' }}
-                                        >
-                                            {candidato.nombre.split(' ').map(n => n[0]).join('')}
+                                        {/* Barra de color superior */}
+                                        <div className={`h-3 ${gradientClass}`}></div>
+
+                                        <div className="p-5">
+                                            <div className="flex flex-col items-center mb-4">
+                                                <div className="relative mb-4">
+                                                    <motion.div
+                                                        whileHover={{ scale: 1.1 }}
+                                                        className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden"
+                                                    >
+                                                        <img
+                                                            src={candidato.photo}
+                                                            alt={candidato.nombre}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(candidato.nombre)}&background=random&size=200`;
+                                                            }}
+                                                        />
+                                                    </motion.div>
+                                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
+                                                        <img
+                                                            src={candidato.logo}
+                                                            alt={candidato.partido}
+                                                            className="w-6 h-6 rounded-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = generarLogoPartido(candidato.partido);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <h3 className="font-bold text-gray-900 text-center text-lg leading-tight">
+                                                    {candidato.nombre}
+                                                </h3>
+                                                <p className="text-sm text-center bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-medium">
+                                                    {candidato.partido}
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center justify-center mb-4">
+                                                <div className="flex items-center">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            className={`${i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                                                            size={14}
+                                                        />
+                                                    ))}
+                                                    <span className="text-xs text-gray-500 ml-1">(4.0)</span>
+                                                </div>
+                                            </div>
+
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => setViewingProposals(candidato)}
+                                                className="w-full text-center py-2.5 bg-gradient-to-r from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 text-gray-700 rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2"
+                                            >
+                                                <FileText size={14} />
+                                                Ver Propuestas
+                                            </motion.button>
                                         </div>
                                     </motion.div>
-                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">
-                                        <div className="w-6 h-6 rounded-full bg-gradient-to-r from-slate-500 to-slate-700 flex items-center justify-center text-white text-xs font-bold">
-                                            {candidato.partido.split(' ').map(w => w[0]).join('')}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <h3 className="font-bold text-gray-900 text-center text-lg leading-tight">
-                                    {candidato.nombre}
-                                </h3>
-                                <p className="text-sm text-gray-600 text-center font-medium mt-1">
-                                    {candidato.partido}
-                                </p>
-                            </div>
-                            
-                            <div className="flex items-center justify-center mb-4">
-                                <div className="flex items-center">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star 
-                                            key={i} 
-                                            className={`${i < 4 ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
-                                            size={14} 
-                                        />
-                                    ))}
-                                    <span className="text-xs text-gray-500 ml-1">(4.0)</span>
-                                </div>
-                            </div>
-                            
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => setViewingProposals(candidato)}
-                                className="w-full text-center py-2.5 bg-gradient-to-r from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 text-gray-700 rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2"
-                            >
-                                <FileText size={14} />
-                                Ver Propuestas
-                            </motion.button>
-                        </div>
-                    </motion.div>
-                );
-            })}
-        </motion.div>
-
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            viewport={{ once: true }}
-            className="text-center mt-12"
-        >
-        </motion.div>
-    </div>
-</section>
+                                );
+                            })}
+                        </motion.div>
+                    )}
+                </div>
+            </section>
 
             {/* Sección de Características del Sistema mejorada */}
             <section className="py-16 bg-white">
@@ -1581,11 +1665,10 @@ function getChatbotResponse(userInput) {
                                                         <button
                                                             key={tab.id}
                                                             onClick={() => setActiveTab(tab.id)}
-                                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                                                                activeTab === tab.id
-                                                                    ? 'bg-white text-slate-600 shadow-sm'
-                                                                    : 'text-gray-600 hover:text-gray-900'
-                                                            }`}
+                                                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === tab.id
+                                                                ? 'bg-white text-slate-600 shadow-sm'
+                                                                : 'text-gray-600 hover:text-gray-900'
+                                                                }`}
                                                         >
                                                             <tab.icon size={16} />
                                                             {tab.label}
@@ -1601,18 +1684,28 @@ function getChatbotResponse(userInput) {
                                                         <Vote size={18} />
                                                         Elección Presidencial
                                                     </h5>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {candidatos.presidencial.map((candidato) => (
-                                                            <CandidateCard
-                                                                key={candidato.id}
-                                                                type="presidencial"
-                                                                candidate={candidato}
-                                                                isSelected={selectedCandidates.presidencial === candidato.nombre}
-                                                                onSelect={handleCandidateSelection}
-                                                                onViewProposals={setViewingProposals}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                                    {loadingCandidatos ? (
+                                                        <div className="text-center py-8">
+                                                            <p className="text-gray-500">Cargando candidatos...</p>
+                                                        </div>
+                                                    ) : candidatos.presidencial.length === 0 ? (
+                                                        <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                                            <p className="text-gray-500">No hay candidatos presidenciales disponibles</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {candidatos.presidencial.map((candidato) => (
+                                                                <CandidateCard
+                                                                    key={candidato.id}
+                                                                    type="presidencial"
+                                                                    candidate={candidato}
+                                                                    isSelected={selectedCandidates.presidencial === candidato.nombre}
+                                                                    onSelect={handleCandidateSelection}
+                                                                    onViewProposals={setViewingProposals}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1623,18 +1716,28 @@ function getChatbotResponse(userInput) {
                                                         <MapPin size={18} />
                                                         Elección Regional
                                                     </h5>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {candidatos.regional.map((candidato) => (
-                                                            <CandidateCard
-                                                                key={candidato.id}
-                                                                type="regional"
-                                                                candidate={candidato}
-                                                                isSelected={selectedCandidates.regional === candidato.nombre}
-                                                                onSelect={handleCandidateSelection}
-                                                                onViewProposals={setViewingProposals}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                                    {loadingCandidatos ? (
+                                                        <div className="text-center py-8">
+                                                            <p className="text-gray-500">Cargando candidatos...</p>
+                                                        </div>
+                                                    ) : candidatos.regional.length === 0 ? (
+                                                        <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                                            <p className="text-gray-500">No hay candidatos regionales disponibles</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {candidatos.regional.map((candidato) => (
+                                                                <CandidateCard
+                                                                    key={candidato.id}
+                                                                    type="regional"
+                                                                    candidate={candidato}
+                                                                    isSelected={selectedCandidates.regional === candidato.nombre}
+                                                                    onSelect={handleCandidateSelection}
+                                                                    onViewProposals={setViewingProposals}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1645,18 +1748,28 @@ function getChatbotResponse(userInput) {
                                                         <User size={18} />
                                                         Elección Distrital
                                                     </h5>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {candidatos.distrital.map((candidato) => (
-                                                            <CandidateCard
-                                                                key={candidato.id}
-                                                                type="distrital"
-                                                                candidate={candidato}
-                                                                isSelected={selectedCandidates.distrital === candidato.nombre}
-                                                                onSelect={handleCandidateSelection}
-                                                                onViewProposals={setViewingProposals}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                                    {loadingCandidatos ? (
+                                                        <div className="text-center py-8">
+                                                            <p className="text-gray-500">Cargando candidatos...</p>
+                                                        </div>
+                                                    ) : candidatos.distrital.length === 0 ? (
+                                                        <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                                            <p className="text-gray-500">No hay candidatos distritales disponibles</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {candidatos.distrital.map((candidato) => (
+                                                                <CandidateCard
+                                                                    key={candidato.id}
+                                                                    type="distrital"
+                                                                    candidate={candidato}
+                                                                    isSelected={selectedCandidates.distrital === candidato.nombre}
+                                                                    onSelect={handleCandidateSelection}
+                                                                    onViewProposals={setViewingProposals}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1860,11 +1973,10 @@ function getChatbotResponse(userInput) {
                                         className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                                     >
                                         <div
-                                            className={`max-w-xs px-4 py-2 rounded-lg whitespace-pre-wrap text-sm ${
-                                                msg.type === 'user'
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-gray-700 text-gray-100'
-                                            }`}
+                                            className={`max-w-xs px-4 py-2 rounded-lg whitespace-pre-wrap text-sm ${msg.type === 'user'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-700 text-gray-100'
+                                                }`}
                                         >
                                             {msg.text}
                                         </div>
