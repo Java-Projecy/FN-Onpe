@@ -1,7 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 
-// ✅ Esto tomará la URL de Railway o localhost según el entorno
+// ✅ SOLUCIÓN DEFINITIVA
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 console.log('🌐 API URL configurada:', API_BASE_URL);
@@ -14,35 +14,7 @@ const api = axios.create({
     timeout: 30000,
 });
 
-// ======================== INTERCEPTORES (opcional pero útil) ========================
-api.interceptors.request.use(
-    (config) => {
-        console.log(`%c${config.method?.toUpperCase()} ${config.url}`, 'color: #4ade80');
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
-api.interceptors.response.use(
-    (response) => {
-        console.log(`%c${response.config.method?.toUpperCase()} ${response.config.url} → ${response.status}`, 'color: #60a5fa');
-        return response;
-    },
-    (error) => {
-        if (error.response) {
-            console.error(`%cERROR ${error.response.status} → ${error.config?.url}`, 'color: #ef4444', error.response.data);
-        } else if (error.request) {
-            console.error('%cSin respuesta del servidor', 'color: #ef4444', error.request);
-        } else {
-            console.error('%cError de configuración', 'color: #ef4444', error.message);
-        }
-        return Promise.reject(error);
-    }
-);
-
-// ============================================
-// CANDIDATOS → /api/data/candidates (SEGURO)
-// ============================================
+// ======================== ENDPOINTS ========================
 export const candidatosAPI = {
     getAll: () => api.get('/data/candidates'),
     getById: (id) => api.get(`/data/candidates/${id}`),
