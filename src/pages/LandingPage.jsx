@@ -101,7 +101,6 @@ const LandingPage = () => {
         return '🤔 Lo siento, no entendí tu consulta. Puedes pedirme ayuda escribiendo "ayuda" o decirme sobre qué tema deseas información (por ejemplo, "requisitos" o "cómo votar").';
     }
 
-
     // Función para enviar mensaje en el chatbot
     const handleSendMessage = () => {
         if (!chatInput.trim()) return;
@@ -778,21 +777,39 @@ const LandingPage = () => {
     };
 
     const handleCandidateSelection = (candidate) => {
+        console.log("🎯 Candidato clickeado:", candidate);
+
         // Determinar el tipo de elección basado en la lista de candidatos
         let type = '';
-        if (candidatos.presidencial.some(c => c.id === candidate.id)) type = 'presidencial';
-        else if (candidatos.regional.some(c => c.id === candidate.id)) type = 'regional';
-        else if (candidatos.distrital.some(c => c.id === candidate.id)) type = 'distrital';
+        if (candidatos.presidencial.some(c => c.id === candidate.id)) {
+            type = 'presidencial';
+            console.log("✅ Tipo: Presidencial");
+        } else if (candidatos.regional.some(c => c.id === candidate.id)) {
+            type = 'regional';
+            console.log("✅ Tipo: Regional");
+        } else if (candidatos.distrital.some(c => c.id === candidate.id)) {
+            type = 'distrital';
+            console.log("✅ Tipo: Distrital");
+        } else {
+            console.log("❌ No se pudo determinar el tipo de candidato");
+            return;
+        }
 
         if (type) {
-            setSelectedCandidates(prev => ({
-                ...prev,
-                [type]: prev[type] === candidate.nombre ? '' : candidate.nombre
-            }));
+            setSelectedCandidates(prev => {
+                const newSelection = {
+                    ...prev,
+                    [type]: prev[type] === candidate.id ? '' : candidate.id  // ← Cambiar a ID
+                };
+                console.log("🔄 Nuevo selectedCandidates:", newSelection);
+                return newSelection;
+            });
         }
     };
 
     const handleSubmit = async () => {
+        console.log("🔍 DEBUG - selectedCandidates:", selectedCandidates);
+
         if (!Object.values(selectedCandidates).some(c => c !== '')) {
             setError('Debes seleccionar al menos un candidato');
             return;
@@ -807,7 +824,7 @@ const LandingPage = () => {
         setError('');
 
         try {
-            // ✅ Payload simplificado con SOLO los campos de la tabla
+            // ✅ Payload para votante
             const votantePayload = {
                 dni: formData.dni.trim(),
                 nombres: (formData.nombres || "Ciudadano").trim(),
@@ -825,70 +842,82 @@ const LandingPage = () => {
                 estado: 'Activo'
             };
 
-            console.log("📤 PAYLOAD ENVIADO:", JSON.stringify(votantePayload, null, 2));
+            console.log("📤 PAYLOAD VOTANTE:", JSON.stringify(votantePayload, null, 2));
 
             const votanteResponse = await votantesAPI.create(votantePayload);
             const votanteCreado = votanteResponse.data;
 
             console.log("✅ VOTANTE CREADO:", votanteCreado);
 
-            // Registrar votos
+            // ✅ CORREGIR: Buscar candidatos por ID en lugar de nombre
             const votosPromises = [];
 
             if (selectedCandidates.presidencial) {
-                const candidato = candidatos.presidencial.find(c => c.nombre === selectedCandidates.presidencial);
+                const candidato = candidatos.presidencial.find(c => c.id === selectedCandidates.presidencial);  // ← Buscar por ID
                 if (candidato) {
                     console.log("🗳️ Registrando voto presidencial...");
-                    votosPromises.push(
-                        votosPresidencialesAPI.create({
-                            votante: { id: votanteCreado.id },
-                            candidato: { id: candidato.id },
-                            dniVotante: formData.dni,
-                            departamento: formData.departamento || "LIMA",
-                            provincia: formData.provincia || "LIMA",
-                            distrito: formData.distrito || "LIMA"
-                        })
-                    );
+                    const votoPayload = {
+                        votante_id: votanteCreado.id,
+                        candidato_id: candidato.id,
+                        dni_votante: formData.dni,
+                        departamento: formData.departamento || "LIMA",
+                        provincia: formData.provincia || "LIMA",
+                        distrito: formData.distrito || "LIMA"
+                    };
+                    console.log("📤 Voto presidencial payload:", votoPayload);
+                    votosPromises.push(votosPresidencialesAPI.create(votoPayload));
+                } else {
+                    console.error("❌ No se encontró candidato presidencial con ID:", selectedCandidates.presidencial);
                 }
             }
 
             if (selectedCandidates.regional) {
-                const candidato = candidatos.regional.find(c => c.nombre === selectedCandidates.regional);
+                const candidato = candidatos.regional.find(c => c.id === selectedCandidates.regional);  // ← Buscar por ID
                 if (candidato) {
                     console.log("🗳️ Registrando voto regional...");
-                    votosPromises.push(
-                        votosRegionalesAPI.create({
-                            votante: { id: votanteCreado.id },
-                            candidato: { id: candidato.id },
-                            dniVotante: formData.dni,
-                            departamento: formData.departamento || "LIMA",
-                            provincia: formData.provincia || "LIMA",
-                            distrito: formData.distrito || "LIMA"
-                        })
-                    );
+                    const votoPayload = {
+                        votante_id: votanteCreado.id,
+                        candidato_id: candidato.id,
+                        dni_votante: formData.dni,
+                        departamento: formData.departamento || "LIMA",
+                        provincia: formData.provincia || "LIMA",
+                        distrito: formData.distrito || "LIMA"
+                    };
+                    console.log("📤 Voto regional payload:", votoPayload);
+                    votosPromises.push(votosRegionalesAPI.create(votoPayload));
+                } else {
+                    console.error("❌ No se encontró candidato regional con ID:", selectedCandidates.regional);
                 }
             }
 
             if (selectedCandidates.distrital) {
-                const candidato = candidatos.distrital.find(c => c.nombre === selectedCandidates.distrital);
+                const candidato = candidatos.distrital.find(c => c.id === selectedCandidates.distrital);  // ← Buscar por ID
                 if (candidato) {
                     console.log("🗳️ Registrando voto distrital...");
-                    votosPromises.push(
-                        votosDistritalesAPI.create({
-                            votante: { id: votanteCreado.id },
-                            candidato: { id: candidato.id },
-                            dniVotante: formData.dni,
-                            departamento: formData.departamento || "LIMA",
-                            provincia: formData.provincia || "LIMA",
-                            distrito: formData.distrito || "LIMA"
-                        })
-                    );
+                    const votoPayload = {
+                        votante_id: votanteCreado.id,
+                        candidato_id: candidato.id,
+                        dni_votante: formData.dni,
+                        departamento: formData.departamento || "LIMA",
+                        provincia: formData.provincia || "LIMA",
+                        distrito: formData.distrito || "LIMA"
+                    };
+                    console.log("📤 Voto distrital payload:", votoPayload);
+                    votosPromises.push(votosDistritalesAPI.create(votoPayload));
+                } else {
+                    console.error("❌ No se encontró candidato distrital con ID:", selectedCandidates.distrital);
                 }
             }
 
-            await Promise.all(votosPromises);
+            // ✅ Esperar a que todos los votos se registren
+            if (votosPromises.length > 0) {
+                await Promise.all(votosPromises);
+                console.log("✅ TODOS LOS VOTOS REGISTRADOS");
+            } else {
+                console.log("⚠️ No se seleccionaron candidatos para votar");
+            }
 
-            console.log("✅ PROCESO COMPLETADO");
+            console.log("✅ PROCESO COMPLETADO - Votante y votos registrados");
             setShowSuccessModal(true);
 
         } catch (err) {
@@ -1774,7 +1803,7 @@ const LandingPage = () => {
                                                                     key={candidato.id}
                                                                     type="presidencial"
                                                                     candidate={candidato}
-                                                                    isSelected={selectedCandidates.presidencial === candidato.nombre}
+                                                                    isSelected={selectedCandidates.presidencial === candidato.id}  // ID
                                                                     onSelect={handleCandidateSelection}
                                                                     onViewProposals={setViewingProposals}
                                                                 />
@@ -1806,7 +1835,7 @@ const LandingPage = () => {
                                                                     key={candidato.id}
                                                                     type="regional"
                                                                     candidate={candidato}
-                                                                    isSelected={selectedCandidates.regional === candidato.nombre}
+                                                                    isSelected={selectedCandidates.regional === candidato.id}
                                                                     onSelect={handleCandidateSelection}
                                                                     onViewProposals={setViewingProposals}
                                                                 />
@@ -1838,7 +1867,7 @@ const LandingPage = () => {
                                                                     key={candidato.id}
                                                                     type="distrital"
                                                                     candidate={candidato}
-                                                                    isSelected={selectedCandidates.distrital === candidato.nombre}
+                                                                    isSelected={selectedCandidates.distrital === candidato.id}
                                                                     onSelect={handleCandidateSelection}
                                                                     onViewProposals={setViewingProposals}
                                                                 />
@@ -1849,25 +1878,35 @@ const LandingPage = () => {
                                             )}
 
                                             {/* Resumen de selección */}
+                                            {/* Resumen de selección - Versión corregida */}
                                             <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                                                <h5 className="font-semibold text-gray-800 mb-3">Resumen de su selección:</h5>
+                                                <h5 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                                    <CheckSquare size={18} />
+                                                    Resumen de su selección:
+                                                </h5>
                                                 <div className="space-y-2">
                                                     {selectedCandidates.presidencial && (
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-sm text-gray-600">Presidencial:</span>
-                                                            <span className="text-sm font-medium text-gray-900">{selectedCandidates.presidencial}</span>
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {candidatos.presidencial.find(c => c.id === selectedCandidates.presidencial)?.nombre || 'Candidato no encontrado'}
+                                                            </span>
                                                         </div>
                                                     )}
                                                     {selectedCandidates.regional && (
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-sm text-gray-600">Regional:</span>
-                                                            <span className="text-sm font-medium text-gray-900">{selectedCandidates.regional}</span>
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {candidatos.regional.find(c => c.id === selectedCandidates.regional)?.nombre || 'Candidato no encontrado'}
+                                                            </span>
                                                         </div>
                                                     )}
                                                     {selectedCandidates.distrital && (
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-sm text-gray-600">Distrital:</span>
-                                                            <span className="text-sm font-medium text-gray-900">{selectedCandidates.distrital}</span>
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {candidatos.distrital.find(c => c.id === selectedCandidates.distrital)?.nombre || 'Candidato no encontrado'}
+                                                            </span>
                                                         </div>
                                                     )}
                                                     {!selectedCandidates.presidencial && !selectedCandidates.regional && !selectedCandidates.distrital && (
