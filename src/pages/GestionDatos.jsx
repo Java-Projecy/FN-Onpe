@@ -1,128 +1,256 @@
+// src/pages/GestionDatos.jsx
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Download, Trash2, Edit, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import {
+  TrendingUp,
+  Search,
+  Download,
+} from 'lucide-react';
+import { votosPresidencialesAPI, votosRegionalesAPI, votosDistritalesAPI } from '../services/api';
 import { containerVariants, itemVariants } from '../animations';
 
 const GestionDatos = () => {
-  const [activeTab, setActiveTab] = useState('presidencial');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('presidencial');
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [selectedRows, setSelectedRows] = useState([]);
-  const [votantes, setVotantes] = useState([]);
+  const [datos, setDatos] = useState({
+    presidencial: [],
+    regional: [],
+    distrital: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Función para cargar votantes del localStorage
-  const cargarVotantes = () => {
-    const votantesGuardados = JSON.parse(localStorage.getItem('votantes') || '[]');
-    setVotantes(votantesGuardados);
-  };
-
-  // Cargar votantes al montar el componente
+  // Cargar votos de las 3 categorías
   useEffect(() => {
-    cargarVotantes();
+    cargarDatos();
   }, []);
 
-  // Datos simulados iniciales (se combinarán con los del localStorage)
-  const votantesIniciales = [
-    { 
-      id: 1, 
-      dni: '72345678', 
-      nombre: 'Juan Pérez Gómez', 
-      edad: 45, 
-      distrito: 'San Isidro',
-      departamento: 'Lima',
-      provincia: 'Lima',
-      direccion: 'Av. Principal 123',
-      telefono: '987654321',
-      email: 'juan.perez@email.com',
-      votoPresidencial: 'Keiko Fujimori',
-      votoRegional: 'Rafael López Aliaga',
-      votoDistrital: 'Nancy Vizurraga',
-      estado: 'Activo',
-      fechaRegistro: '2024-01-15'
-    },
-    { 
-      id: 2, 
-      dni: '87654321', 
-      nombre: 'María López Ruiz', 
-      edad: 38, 
-      distrito: 'Miraflores',
-      departamento: 'Lima',
-      provincia: 'Lima',
-      direccion: 'Jr. Los Olivos 456',
-      telefono: '987123456',
-      email: 'maria.lopez@email.com',
-      votoPresidencial: 'Pedro Castillo',
-      votoRegional: 'Kimberly Gutiérrez',
-      votoDistrital: 'Luis Molina',
-      estado: 'Activo',
-      fechaRegistro: '2024-02-20'
-    },
-    { 
-      id: 3, 
-      dni: '45678912', 
-      nombre: 'Carlos Mendoza', 
-      edad: 29, 
-      distrito: 'Surco',
-      departamento: 'Lima',
-      provincia: 'Lima',
-      direccion: 'Calle Las Flores 789',
-      telefono: '965874123',
-      email: 'carlos.mendoza@email.com',
-      votoPresidencial: 'Hernando de Soto',
-      votoRegional: 'Werner Salcedo',
-      votoDistrital: 'Marco Álvarez',
-      estado: 'Activo',
-      fechaRegistro: '2024-03-10'
-    },
-    { 
-      id: 4, 
-      dni: '78912345', 
-      nombre: 'Ana Torres Vega', 
-      edad: 'null', 
-      distrito: 'La Molina',
-      departamento: 'Lima',
-      provincia: 'Lima',
-      direccion: 'Av. La Universidad 321',
-      telefono: '912345678',
-      email: 'ana.torres@email.com',
-      votoPresidencial: 'Rafael López Aliaga',
-      votoRegional: 'Servando García',
-      votoDistrital: 'Álvaro Paz',
-      estado: 'Inactivo',
-      fechaRegistro: '2024-04-05'
-    },
-    { 
-      id: 5, 
-      dni: '32165498', 
-      nombre: 'Pedro Ramírez', 
-      edad: 33, 
-      distrito: 'San Borja',
-      departamento: 'Lima',
-      provincia: 'Lima',
-      direccion: 'Jr. San Luis 654',
-      telefono: '923456789',
-      email: 'pedro.ramirez@email.com',
-      votoPresidencial: 'Pedro Castillo',
-      votoRegional: 'César Acuña',
-      votoDistrital: 'Carla García',
-      estado: 'Activo',
-      fechaRegistro: '2024-05-12'
-    },
-  ];
+  const cargarDatos = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // Combinar datos iniciales con datos del localStorage
-  const todosLosVotantes = [...votantesIniciales, ...votantes];
+      const [presResp, regResp, distResp] = await Promise.all([
+        votosPresidencialesAPI.getAll().catch(() => ({ data: { data: [] } })),
+        votosRegionalesAPI.getAll().catch(() => ({ data: { data: [] } })),
+        votosDistritalesAPI.getAll().catch(() => ({ data: { data: [] } })),
+      ]);
 
-  // Filtrar por tipo de elección
-  const currentData = todosLosVotantes.filter(votante => {
-    if (activeTab === 'presidencial') return votante.votoPresidencial !== 'No votó';
-    if (activeTab === 'regional') return votante.votoRegional !== 'No votó';
-    if (activeTab === 'distrital') return votante.votoDistrital !== 'No votó';
-    return true;
-  });
+      // Extraer arrays
+      const votosPres = presResp.data?.data || presResp.data || [];
+      const votosReg = regResp.data?.data || regResp.data || [];
+      const votosDist = distResp.data?.data || distResp.data || [];
+
+      // Mapear votos presidenciales
+      const presidencial = votosPres.map(voto => ({
+        id: voto.id,
+        dni: voto.dni_votante || 'N/A',
+        nombre: voto.votantes?.nombres || 'N/A',
+        apellido_paterno: voto.votantes?.apellido_paterno || '',
+        apellido_materno: voto.votantes?.apellido_materno || '',
+        nombre_completo: voto.votantes
+          ? `${voto.votantes.nombres} ${voto.votantes.apellido_paterno} ${voto.votantes.apellido_materno}`
+          : 'N/A',
+        edad: voto.votantes?.edad || 'N/A',
+        distrito: voto.distrito || voto.votantes?.distrito || 'N/A',
+        departamento: voto.departamento || voto.votantes?.departamento || 'N/A',
+        provincia: voto.provincia || voto.votantes?.provincia || 'N/A',
+        direccion: voto.votantes?.direccion || 'N/A',
+        telefono: voto.votantes?.telefono || 'N/A',
+        email: voto.votantes?.email || 'N/A',
+        votoPresidencial: voto.candidatos?.nombre || voto.candidato_id || 'N/A',
+        fechaRegistro: voto.fecha_voto?.split('T')[0] || new Date().toISOString().split('T')[0],
+        estado: 'Activo',
+        tipo_voto: 'presidencial'
+      }));
+
+      // Mapear votos regionales
+      const regional = votosReg.map(voto => ({
+        id: voto.id,
+        dni: voto.dni_votante || 'N/A',
+        nombre: voto.votantes?.nombres || 'N/A',
+        apellido_paterno: voto.votantes?.apellido_paterno || '',
+        apellido_materno: voto.votantes?.apellido_materno || '',
+        nombre_completo: voto.votantes
+          ? `${voto.votantes.nombres} ${voto.votantes.apellido_paterno} ${voto.votantes.apellido_materno}`
+          : 'N/A',
+        edad: voto.votantes?.edad || 'N/A',
+        distrito: voto.distrito || voto.votantes?.distrito || 'N/A',
+        departamento: voto.departamento || voto.votantes?.departamento || 'N/A',
+        provincia: voto.provincia || voto.votantes?.provincia || 'N/A',
+        direccion: voto.votantes?.direccion || 'N/A',
+        telefono: voto.votantes?.telefono || 'N/A',
+        email: voto.votantes?.email || 'N/A',
+        votoRegional: voto.candidatos?.nombre || voto.candidato_id || 'N/A',
+        fechaRegistro: voto.fecha_voto?.split('T')[0] || new Date().toISOString().split('T')[0],
+        estado: 'Activo',
+        tipo_voto: 'regional'
+      }));
+
+      // Mapear votos distritales
+      const distrital = votosDist.map(voto => ({
+        id: voto.id,
+        dni: voto.dni_votante || 'N/A',
+        nombre: voto.votantes?.nombres || 'N/A',
+        apellido_paterno: voto.votantes?.apellido_paterno || '',
+        apellido_materno: voto.votantes?.apellido_materno || '',
+        nombre_completo: voto.votantes
+          ? `${voto.votantes.nombres} ${voto.votantes.apellido_paterno} ${voto.votantes.apellido_materno}`
+          : 'N/A',
+        edad: voto.votantes?.edad || 'N/A',
+        distrito: voto.distrito || voto.votantes?.distrito || 'N/A',
+        departamento: voto.departamento || voto.votantes?.departamento || 'N/A',
+        provincia: voto.provincia || voto.votantes?.provincia || 'N/A',
+        direccion: voto.votantes?.direccion || 'N/A',
+        telefono: voto.votantes?.telefono || 'N/A',
+        email: voto.votantes?.email || 'N/A',
+        votoDistrital: voto.candidatos?.nombre || voto.candidato_id || 'N/A',
+        fechaRegistro: voto.fecha_voto?.split('T')[0] || new Date().toISOString().split('T')[0],
+        estado: 'Activo',
+        tipo_voto: 'distrital'
+      }));
+
+      setDatos({
+        presidencial,
+        regional,
+        distrital,
+      });
+    } catch (err) {
+      setError('Error al cargar los datos. Por favor, recarga la página.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Para exportar datos a CSV por tipo
+  const exportarCSV = () => {
+    try {
+      let datosExportar = [];
+      let tipoLabel = '';
+      let headers = [];
+
+      if (filtroTipo === 'presidencial') {
+        datosExportar = filtrados;
+        tipoLabel = 'presidencial';
+        headers = [
+          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Presidencial','Fecha Registro','Estado'
+        ];
+      } else if (filtroTipo === 'regional') {
+        datosExportar = filtrados;
+        tipoLabel = 'regional';
+        headers = [
+          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Regional','Fecha Registro','Estado'
+        ];
+      } else if (filtroTipo === 'distrital') {
+        datosExportar = filtrados;
+        tipoLabel = 'distrital';
+        headers = [
+          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Distrital','Fecha Registro','Estado'
+        ];
+      }
+
+      if (datosExportar.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+      }
+
+      // Filas por tipo
+      const filas = datosExportar.map(row => {
+        if (filtroTipo === 'presidencial') {
+          return [
+            row.id,
+            row.dni,
+            row.nombre_completo,
+            row.edad,
+            row.departamento,
+            row.provincia,
+            row.distrito,
+            row.direccion,
+            row.telefono,
+            row.email,
+            row.votoPresidencial,
+            row.fechaRegistro,
+            row.estado,
+          ];
+        }
+        if (filtroTipo === 'regional') {
+          return [
+            row.id,
+            row.dni,
+            row.nombre_completo,
+            row.edad,
+            row.departamento,
+            row.provincia,
+            row.distrito,
+            row.direccion,
+            row.telefono,
+            row.email,
+            row.votoRegional,
+            row.fechaRegistro,
+            row.estado,
+          ];
+        }
+        if (filtroTipo === 'distrital') {
+          return [
+            row.id,
+            row.dni,
+            row.nombre_completo,
+            row.edad,
+            row.departamento,
+            row.provincia,
+            row.distrito,
+            row.direccion,
+            row.telefono,
+            row.email,
+            row.votoDistrital,
+            row.fechaRegistro,
+            row.estado,
+          ];
+        }
+        return [];
+      });
+
+      const csvContent = [
+        headers.join(','),
+        ...filas.map(row => row.map(campo => `"${campo}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+
+      const fecha = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `votos_${tipoLabel}_${fecha}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err) {
+      alert('Error al exportar el archivo CSV');
+    }
+  };
+
+  // Elementos a mostrar (solo el tipo filtrado)
+  let datosFiltrados = [];
+  if (filtroTipo === 'presidencial') datosFiltrados = datos.presidencial;
+  if (filtroTipo === 'regional') datosFiltrados = datos.regional;
+  if (filtroTipo === 'distrital') datosFiltrados = datos.distrital;
+
+  // Filtro de búsqueda
+  const filtrados = datosFiltrados.filter(row =>
+    row.dni?.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+    row.nombre_completo?.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+    row.distrito?.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+    row.email?.toLowerCase().includes(terminoBusqueda.toLowerCase())
+  );
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedRows(currentData.map(row => row.id));
+      setSelectedRows(filtrados.map(row => row.id));
     } else {
       setSelectedRows([]);
     }
@@ -142,120 +270,133 @@ const GestionDatos = () => {
       : 'bg-red-100 text-red-800';
   };
 
-  const getEstadoIcon = (estado) => {
-    return estado === 'Activo'
-      ? <CheckCircle size={14} className="text-green-600" />
-      : <XCircle size={14} className="text-red-600" />;
+  // Contadores, solo 3 tipos
+  const contadorPorTipo = {
+    presidencial: datos.presidencial.length,
+    regional: datos.regional.length,
+    distrital: datos.distrital.length,
   };
 
-  // Filtrar por búsqueda
-  const datosFiltrados = currentData.filter(row => 
-    row.dni.includes(searchTerm) || 
-    row.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    row.distrito.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    row.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const tiposFiltro = [
+    { id: 'presidencial', label: 'Presidencial', count: contadorPorTipo.presidencial },
+    { id: 'regional', label: 'Regional', count: contadorPorTipo.regional },
+    { id: 'distrital', label: 'Distrital', count: contadorPorTipo.distrital },
+  ];
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <p className="mt-4 text-gray-600">Cargando datos...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-600 text-lg">{error}</p>
+        <button
+          onClick={cargarDatos}
+          className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6 p-6 bg-gray-50 min-h-screen"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
       {/* Título y pestañas */}
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Registro de Votantes por Nivel Electoral</h2>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={cargarVotantes}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <RefreshCw size={18} />
-            Actualizar
-          </motion.button>
+          <h2 className="text-2xl font-bold text-gray-800">Registro de Votos</h2>
+          <div className="flex gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={cargarDatos}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <TrendingUp size={18} />
+              Actualizar
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={exportarCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download size={18} />
+              Exportar CSV
+            </motion.button>
+          </div>
         </div>
-        
-        <motion.div 
+
+        <motion.div
           className="flex flex-wrap gap-2 border-b border-gray-200"
           variants={containerVariants}
         >
-          <button
-            onClick={() => { setActiveTab('presidencial'); setSelectedRows([]); setSearchTerm(''); }}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all ${
-              activeTab === 'presidencial'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-indigo-600'
-            }`}
-          >
-            Presidencial
-          </button>
-          <button
-            onClick={() => { setActiveTab('regional'); setSelectedRows([]); setSearchTerm(''); }}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all ${
-              activeTab === 'regional'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-indigo-600'
-            }`}
-          >
-            Regional
-          </button>
-          <button
-            onClick={() => { setActiveTab('distrital'); setSelectedRows([]); setSearchTerm(''); }}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all ${
-              activeTab === 'distrital'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-600 hover:text-indigo-600'
-            }`}
-          >
-            Distrital
-          </button>
+          {tiposFiltro.map(tipo => (
+            <button
+              key={tipo.id}
+              onClick={() => { setFiltroTipo(tipo.id); setSelectedRows([]); setTerminoBusqueda(''); }}
+              className={`px-6 py-3 font-medium text-sm border-b-2 transition-all ${filtroTipo === tipo.id
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-600 hover:text-indigo-600'
+                }`}
+            >
+              {tipo.label} ({tipo.count})
+            </button>
+          ))}
         </motion.div>
       </motion.div>
 
       {/* Estadísticas Rápidas */}
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
         variants={containerVariants}
       >
         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-600">Total Votantes</p>
-          <p className="text-3xl font-bold text-gray-800">{todosLosVotantes.length}</p>
+          <p className="text-sm text-gray-600">Presidencial</p>
+          <p className="text-3xl font-bold text-blue-600">
+            {datos.presidencial.length}
+          </p>
         </div>
         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-600">Activos</p>
+          <p className="text-sm text-gray-600">Regional</p>
           <p className="text-3xl font-bold text-green-600">
-            {todosLosVotantes.filter(d => d.estado === 'Activo').length}
+            {datos.regional.length}
           </p>
         </div>
         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-600">Inactivos</p>
-          <p className="text-3xl font-bold text-red-600">
-            {todosLosVotantes.filter(d => d.estado === 'Inactivo').length}
+          <p className="text-sm text-gray-600">Distrital</p>
+          <p className="text-3xl font-bold text-purple-600">
+            {datos.distrital.length}
           </p>
-        </div>
-        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-sm text-gray-600">Seleccionados</p>
-          <p className="text-3xl font-bold text-indigo-600">{selectedRows.length}</p>
         </div>
       </motion.div>
 
       {/* Tabla Principal */}
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
       >
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <h3 className="text-lg font-bold text-gray-800">
-              {activeTab === 'presidencial' && 'Votantes - Elección Presidencial'}
-              {activeTab === 'regional' && 'Votantes - Elección Regional'}
-              {activeTab === 'distrital' && 'Votantes - Elección Distrital'}
+              {filtroTipo === 'presidencial' && 'Votos - Elección Presidencial'}
+              {filtroTipo === 'regional' && 'Votos - Elección Regional'}
+              {filtroTipo === 'distrital' && 'Votos - Elección Distrital'}
             </h3>
 
             <div className="flex items-center gap-3">
@@ -264,51 +405,23 @@ const GestionDatos = () => {
                 <input
                   type="text"
                   placeholder="Buscar por DNI, nombre, distrito, email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={terminoBusqueda}
+                  onChange={(e) => setTerminoBusqueda(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-80"
                 />
               </div>
-
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Filter size={18} />
-                <span className="hidden md:inline">Filtros</span>
-              </button>
-
-              <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                <Download size={18} />
-                <span className="hidden md:inline">Exportar</span>
-              </button>
             </div>
           </div>
-
-          {/* Acciones en lote */}
-          {selectedRows.length > 0 && (
-            <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between">
-              <span className="text-sm font-medium text-indigo-800">
-                {selectedRows.length} votante(s) seleccionado(s)
-              </span>
-              <div className="flex gap-2">
-                <button className="px-4 py-2 text-sm bg-white border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50 flex items-center gap-1">
-                  <Edit size={16} /> Editar
-                </button>
-                <button className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-1">
-                  <Trash2 size={16} /> Eliminar
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Tabla */}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedRows.length === datosFiltrados.length && datosFiltrados.length > 0}
+                    checked={selectedRows.length === filtrados.length && filtrados.length > 0}
                     onChange={handleSelectAll}
                     className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                   />
@@ -321,16 +434,18 @@ const GestionDatos = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Teléfono</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  {activeTab === 'presidencial' && 'Voto Presidencial'}
-                  {activeTab === 'regional' && 'Voto Regional'}
-                  {activeTab === 'distrital' && 'Voto Distrital'}
+                  {filtroTipo === 'presidencial'
+                    ? 'Voto Presidencial'
+                    : filtroTipo === 'regional'
+                    ? 'Voto Regional'
+                    : 'Voto Distrital'}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Fecha Registro</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Estado</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {datosFiltrados.map((row) => (
+              {filtrados.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <input
@@ -341,21 +456,22 @@ const GestionDatos = () => {
                     />
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.dni}</td>
-                  <td className="px-6 py-4 text-sm text-gray-800 font-medium">{row.nombre}</td>
+                  <td className="px-6 py-4 text-sm text-gray-800 font-medium">{row.nombre_completo}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.edad}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.distrito}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.direccion || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.telefono || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.email || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm font-medium text-indigo-700">
-                    {activeTab === 'presidencial' && (row.votoPresidencial || 'No votó')}
-                    {activeTab === 'regional' && (row.votoRegional || 'No votó')}
-                    {activeTab === 'distrital' && (row.votoDistrital || 'No votó')}
+                    {filtroTipo === 'presidencial'
+                      ? row.votoPresidencial
+                      : filtroTipo === 'regional'
+                      ? row.votoRegional
+                      : row.votoDistrital}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.fechaRegistro}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(row.estado)}`}>
-                      {getEstadoIcon(row.estado)}
                       {row.estado}
                     </span>
                   </td>
@@ -368,14 +484,9 @@ const GestionDatos = () => {
         {/* Paginación */}
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
           <p className="text-sm text-gray-700">
-            Mostrando <span className="font-medium">1</span> a <span className="font-medium">{datosFiltrados.length}</span> de{' '}
-            <span className="font-medium">{datosFiltrados.length}</span> registros
+            Mostrando <span className="font-medium">1</span> a <span className="font-medium">{filtrados.length}</span> de{' '}
+            <span className="font-medium">{filtrados.length}</span> registros
           </p>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-white transition-colors">Anterior</button>
-            <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">1</button>
-            <button className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-white transition-colors">Siguiente</button>
-          </div>
         </div>
       </motion.div>
     </motion.div>
