@@ -59,7 +59,7 @@ const LandingPage = () => {
     const chatbotResponses = {
         'hola': '👋 ¡Hola! Bienvenido al Sistema de Votación Virtual de la ONPE. Estoy aquí para ayudarte con todo lo relacionado al proceso electoral. ¿Qué deseas saber hoy?',
 
-        'cómo votar': '🗳️ Para emitir tu voto sigue estos pasos:\n1️⃣ Ingresa tu número de DNI.\n2️⃣ Verifica que tus datos personales sean correctos.\n3️⃣ Elige a tus candidatos en las categorías disponibles (presidencial, regional o distrital).\n4️⃣ Confirma tu selección para registrar tu voto.\n¡Y listo! Tu participación quedará registrada de forma segura.',
+        'cómo votar': '🗳️ Para emitir tu voto sigue estos pasos:\n1️⃣ Haz clic en el botón "Votar Aquí".\n2️⃣ Ingresa tu número de DNI.\n3️⃣ Verifica que tus datos personales sean correctos.\n4️⃣ Elige a tus candidatos en las categorías disponibles (presidencial, regional o distrital).\n5️⃣ Confirma tu selección para registrar tu voto.\n¡Y listo! Tu participación quedará registrada de forma segura.',
 
         'requisitos': '📋 Para poder votar necesitas:\n- Ser ciudadano(a) peruano(a).\n- Tener 18 años cumplidos.\n- Contar con un DNI vigente.\nSi cumples con estos requisitos, podrás participar en el proceso electoral sin problemas.',
 
@@ -222,6 +222,8 @@ const LandingPage = () => {
     });
     const [loadingCandidatos, setLoadingCandidatos] = useState(true);
 
+    // src/pages/LandingPage.jsx
+
     useEffect(() => {
         const cargarCandidatos = async () => {
             try {
@@ -231,47 +233,34 @@ const LandingPage = () => {
                 console.log('📋 Response completo:', response);
                 console.log('🔍 Estructura del response:', Object.keys(response));
 
-                // ✅ DEPURA para encontrar dónde está el array
-                console.log('🔍 response.data?:', response.data);
-                console.log('🔍 response.content?:', response.content);
-                console.log('🔍 response.candidatos?:', response.candidatos);
-                console.log('🔍 response.result?:', response.result);
-
-                // Busca el array en las propiedades del objeto
+                // ✅ CORRECCIÓN: El backend devuelve { success: true, data: [...] }
                 let candidatosData = null;
 
-                if (Array.isArray(response.data)) {
+                // Primero verificar si hay response.data (Axios wrapper)
+                if (response.data) {
+                    // Verificar si response.data tiene la estructura del backend { success, data }
+                    if (response.data.success && Array.isArray(response.data.data)) {
+                        candidatosData = response.data.data;
+                        console.log('✅ Array encontrado en response.data.data');
+                    }
+                    // Si response.data es directamente un array
+                    else if (Array.isArray(response.data)) {
+                        candidatosData = response.data;
+                        console.log('✅ Array encontrado en response.data');
+                    }
+                }
+                // Si response es directamente el objeto del backend
+                else if (response.success && Array.isArray(response.data)) {
                     candidatosData = response.data;
-                    console.log('✅ Array encontrado en response.data');
+                    console.log('✅ Array encontrado en response.data (directo)');
                 }
-                else if (Array.isArray(response.content)) {
-                    candidatosData = response.content; // Para paginación
-                    console.log('✅ Array encontrado en response.content');
-                }
-                else if (Array.isArray(response.candidatos)) {
-                    candidatosData = response.candidatos;
-                    console.log('✅ Array encontrado en response.candidatos');
-                }
-                else if (Array.isArray(response.result)) {
-                    candidatosData = response.result;
-                    console.log('✅ Array encontrado en response.result');
-                }
+                // Si response es directamente un array
                 else if (Array.isArray(response)) {
                     candidatosData = response;
                     console.log('✅ Response es directamente el array');
                 }
-                else {
-                    // Si no encontramos array, busca en cualquier propiedad
-                    for (let key in response) {
-                        if (Array.isArray(response[key])) {
-                            candidatosData = response[key];
-                            console.log(`✅ Array encontrado en response.${key}`);
-                            break;
-                        }
-                    }
-                }
 
-                // Si no encontramos array, usa array vacío
+                // Si no encontramos array, usar array vacío
                 if (!candidatosData || !Array.isArray(candidatosData)) {
                     console.error('❌ No se pudo encontrar array de candidatos en:', response);
                     candidatosData = [];
@@ -849,61 +838,88 @@ const LandingPage = () => {
 
             console.log("✅ VOTANTE CREADO:", votanteCreado);
 
-            // ✅ CORREGIR: Buscar candidatos por ID en lugar de nombre
+            // ✅ CORRECCIÓN: Obtener el ID del votante correctamente
+            const votanteId = votanteCreado.data?.id || votanteCreado.id;
+
+            if (!votanteId) {
+                throw new Error("No se pudo obtener el ID del votante creado");
+            }
+
+            console.log("🆔 Votante ID:", votanteId);
+
+            // ✅ Registrar votos
             const votosPromises = [];
 
+            // PRESIDENCIAL
             if (selectedCandidates.presidencial) {
-                const candidato = candidatos.presidencial.find(c => c.id === selectedCandidates.presidencial);  // ← Buscar por ID
+                const candidato = candidatos.presidencial.find(c => c.id === selectedCandidates.presidencial);
                 if (candidato) {
                     console.log("🗳️ Registrando voto presidencial...");
                     const votoPayload = {
-                        votante_id: votanteCreado.id,
-                        candidato_id: candidato.id,
-                        dni_votante: formData.dni,
+                        votante_id: votanteId,  // ✅ UUID
+                        candidato_id: candidato.id,  // ✅ UUID
+                        dni_votante: formData.dni.trim(),
                         departamento: formData.departamento || "LIMA",
                         provincia: formData.provincia || "LIMA",
                         distrito: formData.distrito || "LIMA"
                     };
                     console.log("📤 Voto presidencial payload:", votoPayload);
-                    votosPromises.push(votosPresidencialesAPI.create(votoPayload));
+                    votosPromises.push(
+                        votosPresidencialesAPI.create(votoPayload).catch(err => {
+                            console.error("❌ Error voto presidencial:", err.response?.data);
+                            throw err;
+                        })
+                    );
                 } else {
                     console.error("❌ No se encontró candidato presidencial con ID:", selectedCandidates.presidencial);
                 }
             }
 
+            // REGIONAL
             if (selectedCandidates.regional) {
-                const candidato = candidatos.regional.find(c => c.id === selectedCandidates.regional);  // ← Buscar por ID
+                const candidato = candidatos.regional.find(c => c.id === selectedCandidates.regional);
                 if (candidato) {
                     console.log("🗳️ Registrando voto regional...");
                     const votoPayload = {
-                        votante_id: votanteCreado.id,
-                        candidato_id: candidato.id,
-                        dni_votante: formData.dni,
+                        votante_id: votanteId,  // ✅ UUID
+                        candidato_id: candidato.id,  // ✅ UUID
+                        dni_votante: formData.dni.trim(),
                         departamento: formData.departamento || "LIMA",
                         provincia: formData.provincia || "LIMA",
                         distrito: formData.distrito || "LIMA"
                     };
                     console.log("📤 Voto regional payload:", votoPayload);
-                    votosPromises.push(votosRegionalesAPI.create(votoPayload));
+                    votosPromises.push(
+                        votosRegionalesAPI.create(votoPayload).catch(err => {
+                            console.error("❌ Error voto regional:", err.response?.data);
+                            throw err;
+                        })
+                    );
                 } else {
                     console.error("❌ No se encontró candidato regional con ID:", selectedCandidates.regional);
                 }
             }
 
+            // DISTRITAL
             if (selectedCandidates.distrital) {
-                const candidato = candidatos.distrital.find(c => c.id === selectedCandidates.distrital);  // ← Buscar por ID
+                const candidato = candidatos.distrital.find(c => c.id === selectedCandidates.distrital);
                 if (candidato) {
                     console.log("🗳️ Registrando voto distrital...");
                     const votoPayload = {
-                        votante_id: votanteCreado.id,
-                        candidato_id: candidato.id,
-                        dni_votante: formData.dni,
+                        votante_id: votanteId,  // ✅ UUID
+                        candidato_id: candidato.id,  // ✅ UUID
+                        dni_votante: formData.dni.trim(),
                         departamento: formData.departamento || "LIMA",
                         provincia: formData.provincia || "LIMA",
                         distrito: formData.distrito || "LIMA"
                     };
                     console.log("📤 Voto distrital payload:", votoPayload);
-                    votosPromises.push(votosDistritalesAPI.create(votoPayload));
+                    votosPromises.push(
+                        votosDistritalesAPI.create(votoPayload).catch(err => {
+                            console.error("❌ Error voto distrital:", err.response?.data);
+                            throw err;
+                        })
+                    );
                 } else {
                     console.error("❌ No se encontró candidato distrital con ID:", selectedCandidates.distrital);
                 }
@@ -911,6 +927,7 @@ const LandingPage = () => {
 
             // ✅ Esperar a que todos los votos se registren
             if (votosPromises.length > 0) {
+                console.log(`⏳ Esperando ${votosPromises.length} votos...`);
                 await Promise.all(votosPromises);
                 console.log("✅ TODOS LOS VOTOS REGISTRADOS");
             } else {
@@ -925,9 +942,19 @@ const LandingPage = () => {
             console.error("❌ Response:", err.response?.data);
             console.error("❌ Status:", err.response?.status);
 
-            const errorMsg = err.response?.data?.message
-                || err.response?.data?.error
-                || 'Error al registrar. Verifica que no hayas votado antes con este DNI.';
+            // Extraer mensaje de error detallado
+            let errorMsg = 'Error al registrar. Por favor, intenta nuevamente.';
+
+            if (err.response?.data?.detail) {
+                if (Array.isArray(err.response.data.detail)) {
+                    // Error de validación de Pydantic
+                    errorMsg = err.response.data.detail.map(e =>
+                        `${e.loc?.join('.')}: ${e.msg}`
+                    ).join(', ');
+                } else if (typeof err.response.data.detail === 'string') {
+                    errorMsg = err.response.data.detail;
+                }
+            }
 
             setError(errorMsg);
         } finally {
@@ -1097,7 +1124,7 @@ const LandingPage = () => {
                             className="px-8 py-4 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all font-bold text-lg shadow-lg"
                         >
                             <Vote size={24} className="inline mr-2" />
-                            Votar Ahora
+                            Vote Aqui
                         </motion.button>
                     </motion.div>
                 </div>

@@ -23,14 +23,20 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
-const mapearCandidato = (c) => ({
-  ...c,
-  tipo_eleccion: c.tipoEleccion,
-  image_url: c.imageUrl,
-  propuestas: typeof c.propuestas === 'string'
-    ? (c.propuestas ? JSON.parse(c.propuestas) : [])
-    : (c.propuestas || [])
-});
+const mapearCandidato = (c) => {
+  // Normalizar tipo_eleccion desde el inicio
+  const tipoOriginal = c.tipo_eleccion || c.tipoEleccion || '';
+  const tipoNormalizado = tipoOriginal.toLowerCase().trim();
+  
+  return {
+      ...c,
+      tipo_eleccion: tipoNormalizado,  // ✅ Normalizado
+      image_url: c.imageUrl || c.image_url,
+      propuestas: typeof c.propuestas === 'string'
+          ? (c.propuestas ? JSON.parse(c.propuestas) : [])
+          : (c.propuestas || [])
+  };
+};
 
 const normalizarTipo = (tipo) => tipo ? tipo.toString().toLowerCase().trim() : '';
 
@@ -46,40 +52,88 @@ const Candidatos = () => {
   const [showModal, setShowModal] = useState(false);
   const [candidatoSeleccionado, setCandidatoSeleccionado] = useState(null);
 
-  useEffect(() => {
-    const cargarDatos = async () => {
+  // src/pages/Candidatos.jsx
+
+  // src/pages/Candidatos.jsx
+
+useEffect(() => {
+  const cargarDatos = async () => {
       try {
-        setLoading(true);
+          setLoading(true);
 
-        const resCandidatos = await candidatosAPI.getAll();
-        const candidatosMapeados = (resCandidatos.data || []).map(mapearCandidato);
+          const resCandidatos = await candidatosAPI.getAll();
+          console.log("📋 Response completo candidatos:", resCandidatos);
+          
+          // Extraer el array de candidatos correctamente
+          let candidatosArray = [];
+          
+          if (resCandidatos.data) {
+              if (resCandidatos.data.success && Array.isArray(resCandidatos.data.data)) {
+                  candidatosArray = resCandidatos.data.data;
+              }
+              else if (Array.isArray(resCandidatos.data)) {
+                  candidatosArray = resCandidatos.data;
+              }
+          }
+          else if (resCandidatos.success && Array.isArray(resCandidatos.data)) {
+              candidatosArray = resCandidatos.data;
+          }
+          
+          console.log("✅ Candidatos extraídos:", candidatosArray);
+          
+          // ✅ CORRECCIÓN: Mapear Y normalizar tipo_eleccion
+          const candidatosMapeados = candidatosArray.map(c => {
+              const mapped = mapearCandidato(c);
+              
+              // Normalizar tipo_eleccion (puede venir como tipo_eleccion o tipoEleccion)
+              const tipoOriginal = c.tipo_eleccion || c.tipoEleccion || '';
+              mapped.tipo_eleccion = tipoOriginal.toLowerCase().trim();
+              
+              console.log(`📌 Candidato: ${mapped.nombre} -> Tipo: "${mapped.tipo_eleccion}"`);
+              
+              return mapped;
+          });
 
-        const [pres, reg, dist] = await Promise.all([
-          votosPresidencialesAPI.getAll().catch(() => ({ data: [] })),
-          votosRegionalesAPI.getAll().catch(() => ({ data: [] })),
-          votosDistritalesAPI.getAll().catch(() => ({ data: [] })),
-        ]);
+          console.log("📋 Candidatos mapeados con tipos:", candidatosMapeados);
 
-        const todosLosVotos = [...(pres.data || []), ...(reg.data || []), ...(dist.data || [])];
+          // Cargar votos
+          const [pres, reg, dist] = await Promise.all([
+              votosPresidencialesAPI.getAll().catch(() => ({ data: { data: [] } })),
+              votosRegionalesAPI.getAll().catch(() => ({ data: { data: [] } })),
+              votosDistritalesAPI.getAll().catch(() => ({ data: { data: [] } })),
+          ]);
 
-        const conteo = {};
-        todosLosVotos.forEach(voto => {
-          const id = voto.candidato?.id || voto.candidato_id;
-          if (id) conteo[id] = (conteo[id] || 0) + 1;
-        });
+          console.log("📊 Votos presidenciales:", pres);
+          console.log("📊 Votos regionales:", reg);
+          console.log("📊 Votos distritales:", dist);
 
-        setVotosPorCandidato(conteo);
-        setCandidatos(candidatosMapeados);
+          const votosPresArray = pres.data?.data || pres.data || [];
+          const votosRegArray = reg.data?.data || reg.data || [];
+          const votosDistArray = dist.data?.data || dist.data || [];
+
+          const todosLosVotos = [...votosPresArray, ...votosRegArray, ...votosDistArray];
+          console.log("📊 Total votos combinados:", todosLosVotos.length);
+
+          const conteo = {};
+          todosLosVotos.forEach(voto => {
+              const id = voto.candidato?.id || voto.candidato_id;
+              if (id) conteo[id] = (conteo[id] || 0) + 1;
+          });
+
+          console.log("📊 Conteo de votos por candidato:", conteo);
+
+          setVotosPorCandidato(conteo);
+          setCandidatos(candidatosMapeados);
       } catch (err) {
-        setError('Error al cargar los datos');
-        console.error(err);
+          setError('Error al cargar los datos');
+          console.error("❌ Error en cargarDatos:", err);
       } finally {
-        setLoading(false);
+          setLoading(false);
       }
-    };
+  };
 
-    cargarDatos();
-  }, []);
+  cargarDatos();
+}, []);
 
   // Enriquecer con votos y porcentaje
   const candidatosConVotos = candidatos.map(c => ({
