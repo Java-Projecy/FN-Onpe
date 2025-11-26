@@ -11,18 +11,18 @@ const LimpiezaDatos = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentProcessingStep, setCurrentProcessingStep] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Datasets
   const [batches, setBatches] = useState([]);
   const [batchSeleccionado, setBatchSeleccionado] = useState(null);
   const [cargandoBatches, setCargandoBatches] = useState(true);
   const [datosTabla, setDatosTabla] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
-  
+
   // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const registrosPorPagina = 10;
-  
+
   // Estadísticas (se calculan al cargar el batch)
   const [estadisticas, setEstadisticas] = useState({
     total: 0,
@@ -67,13 +67,13 @@ const LimpiezaDatos = () => {
 
   const cargarDatosBatch = async () => {
     if (!batchSeleccionado) return;
-    
+
     setCargandoDatos(true);
     try {
       const response = await axios.get(
         `${API_URL}/api/upload/batch/${batchSeleccionado.batch_id}/data/${batchSeleccionado.tipo_eleccion}`
       );
-      
+
       if (response.data.success && response.data.data) {
         const data = response.data.data;
         setDatosTabla(data);
@@ -155,29 +155,36 @@ const LimpiezaDatos = () => {
     }
   };
 
-  const enviarATablaFinal = async () => {
-    if (!batchSeleccionado) return;
+  const enviarATablaFinal = async (replaceAll = false) => {
+  if (!batchSeleccionado) return;
+  
+  const modoTexto = replaceAll ? 'REEMPLAZAR TODOS' : 'AGREGAR SIN DUPLICAR';
+  const confirmMsg = replaceAll 
+    ? '⚠️ ADVERTENCIA: Esto BORRARÁ todos los votos existentes y los reemplazará con los datos limpios. ¿Estás seguro?' 
+    : '¿Agregar los datos limpios a la tabla final (sin borrar nada)?';
+  
+  if (!confirm(confirmMsg)) return;
+  
+  setIsProcessing(true);
+  
+  try {
+    const endpoint = replaceAll 
+      ? `/api/upload/batch/${batchSeleccionado.batch_id}/move-to-final-replace`
+      : `/api/upload/batch/${batchSeleccionado.batch_id}/move-to-final-append`;
     
-    if (!confirm('¿Mover todos los datos limpios a la tabla final?')) return;
+    const response = await axios.post(`${API_URL}${endpoint}`);
     
-    setIsProcessing(true);
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/upload/batch/${batchSeleccionado.batch_id}/move-to-final`,
-        { replace_all: false }
-      );
-      
-      if (response.data.success) {
-        alert(`¡Listo! ${response.data.estadisticas.votos_registrados} votos registrados`);
-        cargarBatches();
-        setBatchSeleccionado(null);
-      }
-    } catch (error) {
-      alert('Error: ' + (error.response?.data?.detail || error.message));
-    } finally {
-      setIsProcessing(false);
+    if (response.data.success) {
+      alert(`✅ ¡Listo! ${response.data.estadisticas.votos_registrados} votos registrados en modo: ${modoTexto}`);
+      cargarBatches();
+      setBatchSeleccionado(null);
     }
-  };
+  } catch (error) {
+    alert('Error: ' + (error.response?.data?.detail || error.message));
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // Filtrado
   const datosFiltrados = datosTabla.filter(row =>
@@ -194,7 +201,7 @@ const LimpiezaDatos = () => {
     const base = "px-2 py-1 text-xs font-medium rounded-full";
     const esDuplicado = row.dni && datosTabla.filter(r => r.dni === row.dni).length > 1;
     if (esDuplicado) return <span className={`${base} bg-red-100 text-red-800`}>Duplicado</span>;
-    if (!row.dni || !row.nombre_completo || !row.candidato_nombre) 
+    if (!row.dni || !row.nombre_completo || !row.candidato_nombre)
       return <span className={`${base} bg-yellow-100 text-yellow-800`}>Incompleto</span>;
     return <span className={`${base} bg-green-100 text-green-800`}>Válido</span>;
   };
@@ -283,13 +290,12 @@ const LimpiezaDatos = () => {
                   key={action.id}
                   onClick={() => handleCleaningAction(action.id)}
                   disabled={isProcessing || action.id === 1} // Analizar ya está hecho
-                  className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${
-                    done ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-500'
-                  } ${isProcessing ? 'opacity-60' : ''}`}
+                  className={`p-6 rounded-xl border-2 flex flex-col items-center gap-3 transition-all ${done ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:border-gray-500'
+                    } ${isProcessing ? 'opacity-60' : ''}`}
                 >
                   <div className={`p-4 rounded-full ${done ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    {currentProcessingStep === action.id ? 
-                      <RefreshCw className="animate-spin" size={28} /> : 
+                    {currentProcessingStep === action.id ?
+                      <RefreshCw className="animate-spin" size={28} /> :
                       <Icon size={28} className={done ? 'text-green-600' : 'text-gray-600'} />
                     }
                   </div>
@@ -301,16 +307,75 @@ const LimpiezaDatos = () => {
           </div>
 
           {completedSteps.length === 4 && (
-            <div className="mt-6 p-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-center">
-              <h4 className="text-2xl font-bold mb-2">¡Limpieza Completada!</h4>
-              <button
-                onClick={enviarATablaFinal}
-                disabled={isProcessing}
-                className="mt-4 px-8 py-4 bg-white text-green-700 font-bold rounded-xl hover:bg-gray-100 transition"
-              >
-                <Database className="inline mr-2" size={24} />
-                Enviar a Tabla Final
-              </button>
+            <div className="mt-6 space-y-4">
+              {/* Header */}
+              <div className="p-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-center">
+                <h4 className="text-2xl font-bold mb-2">¡Limpieza Completada!</h4>
+                <p className="text-sm opacity-90">Selecciona cómo deseas migrar los datos</p>
+              </div>
+
+              {/* Botones */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* BOTÓN 1: REEMPLAZAR TODO */}
+                <motion.button
+                  onClick={() => enviarATablaFinal(true)} // replace_all = true
+                  disabled={isProcessing}
+                  className="flex flex-col items-center gap-3 p-6 bg-red-50 border-2 border-red-500 rounded-xl hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center">
+                    <RefreshCw size={32} className="text-white" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-red-900 text-lg">Reemplazar Todo</p>
+                    <p className="text-sm text-red-700 mt-1">Borra datos existentes y sube los nuevos</p>
+                  </div>
+                  {isProcessing && (
+                    <div className="flex items-center gap-2 text-red-600">
+                      <RefreshCw className="animate-spin" size={16} />
+                      <span className="text-xs">Procesando...</span>
+                    </div>
+                  )}
+                </motion.button>
+
+                {/* BOTÓN 2: AGREGAR SIN DUPLICAR */}
+                <motion.button
+                  onClick={() => enviarATablaFinal(false)} // replace_all = false
+                  disabled={isProcessing}
+                  className="flex flex-col items-center gap-3 p-6 bg-blue-50 border-2 border-blue-500 rounded-xl hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                    <Database size={32} className="text-white" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-blue-900 text-lg">Agregar Sin Duplicar</p>
+                    <p className="text-sm text-blue-700 mt-1">Solo agrega votos nuevos (no borra nada)</p>
+                  </div>
+                  {isProcessing && (
+                    <div className="flex items-center gap-2 text-blue-600">
+                      <RefreshCw className="animate-spin" size={16} />
+                      <span className="text-xs">Procesando...</span>
+                    </div>
+                  )}
+                </motion.button>
+
+              </div>
+
+              {/* Advertencia para REEMPLAZAR TODO */}
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 flex items-start gap-3">
+                <AlertTriangle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="font-semibold text-yellow-900">⚠️ Advertencia</p>
+                  <p className="text-sm text-yellow-800 mt-1">
+                    "Reemplazar Todo" eliminará permanentemente todos los votos existentes en la tabla.
+                    Solo usa esta opción si estás seguro de reemplazar los datos completamente.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>
@@ -370,11 +435,11 @@ const LimpiezaDatos = () => {
                 <div className="px-6 py-4 border-t flex justify-between items-center text-sm">
                   <span>Mostrando {inicio + 1} - {Math.min(inicio + registrosPorPagina, datosFiltrados.length)} de {datosFiltrados.length}</span>
                   <div className="flex gap-2">
-                    <button onClick={() => setPaginaActual(p => Math.max(1, p-1))} disabled={paginaActual === 1} className="px-3 py-1 border rounded disabled:opacity-50">
+                    <button onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1} className="px-3 py-1 border rounded disabled:opacity-50">
                       <ChevronLeft size={16} />
                     </button>
                     <span className="px-3 py-1">{paginaActual} / {totalPaginas}</span>
-                    <button onClick={() => setPaginaActual(p => Math.min(totalPaginas, p+1))} disabled={paginaActual === totalPaginas} className="px-3 py-1 border rounded disabled:opacity-50">
+                    <button onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} className="px-3 py-1 border rounded disabled:opacity-50">
                       <ChevronRight size={16} />
                     </button>
                   </div>
