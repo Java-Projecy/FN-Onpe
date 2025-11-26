@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Brain, Play, Activity, Database } from 'lucide-react';
+import { Brain, Play, Activity, Database, TrendingUp, Award, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Cambia esto según tu backend
+// ✅ Configuración de API
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const EntrenamientoModelo = () => {
-    const [modelType, setModelType] = useState('sklearn');
-    const [algorithm, setAlgorithm] = useState('logistic');
+    const [modelType, setModelType] = useState('classification');
+    const [algorithm, setAlgorithm] = useState('random_forest');
     const [electionType, setElectionType] = useState('presidencial');
     const [isTraining, setIsTraining] = useState(false);
     const [trainingComplete, setTrainingComplete] = useState(false);
@@ -20,24 +20,32 @@ const EntrenamientoModelo = () => {
         recall: 0,
         f1Score: 0
     });
+    const [currentModel, setCurrentModel] = useState(null);
+    const [error, setError] = useState(null);
+
+    // Cargar modelos activos al iniciar
+    useEffect(() => {
+        cargarModelosActivos();
+    }, []);
+
+    const cargarModelosActivos = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/api/train/modelos-activos`);
+            console.log("📊 Modelos activos:", response.data);
+        } catch (error) {
+            console.error("Error cargando modelos:", error);
+        }
+    };
 
     const sklearnAlgorithms = [
-        { id: 'logistic', name: 'Regresión Logística', icon: '📊' },
-        { id: 'random-forest', name: 'Random Forest', icon: '🌳' },
-        { id: 'svm', name: 'SVM', icon: '🎯' },
-        { id: 'gradient-boosting', name: 'Gradient Boosting', icon: '🚀' }
-    ];
-
-    const pytorchModels = [
-        { id: 'neural-network', name: 'Red Neuronal', icon: '🧠' },
-        { id: 'lstm', name: 'LSTM', icon: '🔄' },
-        { id: 'cnn', name: 'CNN', icon: '🖼️' },
-        { id: 'transformer', name: 'Transformer', icon: '⚡' }
+        { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
+        { id: 'logistic_regression', name: 'Regresión Logística', icon: '📊' },
+        { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
     ];
 
     const getCurrentAlgorithmName = () => {
-        const list = modelType === 'sklearn' ? sklearnAlgorithms : pytorchModels;
-        return list.find(a => a.id === algorithm)?.name || algorithm;
+        const algo = sklearnAlgorithms.find(a => a.id === algorithm);
+        return algo ? algo.name : algorithm;
     };
 
     const getElectionTypeLabel = () => {
@@ -49,105 +57,180 @@ const EntrenamientoModelo = () => {
         return types[electionType];
     };
 
-    // ⭐ Llamada REAL a tu backend FastAPI
+    // ⭐ FUNCIÓN PRINCIPAL: ENTRENAR MODELO
     const entrenarModelo = async () => {
         setIsTraining(true);
         setTrainingComplete(false);
         setTrainingProgress(0);
+        setError(null);
 
         try {
             // Simulación visual del progreso
             const interval = setInterval(() => {
                 setTrainingProgress(prev => {
-                    if (prev >= 100) {
+                    if (prev >= 90) {
                         clearInterval(interval);
-                        return 100;
+                        return 90;
                     }
                     return prev + 10;
                 });
-            }, 300);
+            }, 500);
 
-            // 🌐 Request real al backend
+            console.log(`🎯 Iniciando entrenamiento: ${algorithm} para ${electionType}`);
+
+            // 🌐 REQUEST REAL AL BACKEND
             const response = await axios.post(
-                `${API_URL}/api/train/entrenar/${electionType}`
+                `${API_URL}/api/train/entrenar/${electionType}`,
+                {}, // Sin body, el backend usa el tipo de elección de la URL
+                {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 120000 // 2 minutos de timeout
+                }
             );
+
+            clearInterval(interval);
+            setTrainingProgress(100);
+
+            console.log("✅ Respuesta del backend:", response.data);
 
             if (response.data.success) {
                 setTrainingComplete(true);
 
-                const { accuracy, precision, recall, f1 } = response.data.metrics;
+                // Extraer métricas
+                const { metricas, participacion_estimada, feature_importance, modelo_activo, training_time } = response.data;
 
                 setMetricsData({
-                    accuracy,
-                    precision,
-                    recall,
-                    f1Score: f1
+                    accuracy: parseFloat(metricas.accuracy) || 0,
+                    precision: parseFloat(metricas.precision) || 0,
+                    recall: parseFloat(metricas.recall) || 0,
+                    f1Score: parseFloat(metricas.f1_score) || 0
                 });
 
+                setCurrentModel({
+                    modelo_activo,
+                    metricas,
+                    participacion_estimada,
+                    feature_importance,
+                    training_time
+                });
+
+                // Agregar al historial
                 const newEntry = {
                     id: Date.now(),
-                    date: new Date().toLocaleString(),
+                    date: new Date().toLocaleString('es-PE'),
                     algorithm: getCurrentAlgorithmName(),
-                    framework: modelType === "sklearn" ? "Scikit-Learn" : "PyTorch",
+                    framework: "Scikit-Learn",
                     electionType: getElectionTypeLabel(),
-                    accuracy,
-                    f1,
-                    time: response.data.training_time || "N/A"
+                    accuracy: metricas.accuracy,
+                    f1: metricas.f1_score,
+                    time: training_time
                 };
 
                 setTrainingHistory(prev => [newEntry, ...prev].slice(0, 8));
+            } else {
+                throw new Error(response.data.error || "Error desconocido");
             }
 
         } catch (error) {
-            alert(`❌ Error: ${error.response?.data?.detail || "Error desconocido"}`);
+            console.error("❌ Error:", error);
+            clearInterval(interval);
+            
+            let errorMessage = "Error al entrenar el modelo";
+            
+            if (error.response) {
+                // Error del servidor
+                errorMessage = error.response.data?.detail || error.response.data?.error || errorMessage;
+            } else if (error.request) {
+                // No hubo respuesta
+                errorMessage = "No se pudo conectar con el servidor. Verifica que el backend esté corriendo.";
+            } else {
+                // Error en la configuración
+                errorMessage = error.message;
+            }
+
+            setError(errorMessage);
+            setTrainingProgress(0);
         } finally {
             setIsTraining(false);
         }
     };
 
     return (
-        <motion.div className="space-y-6">
+        <motion.div className="space-y-6 max-w-7xl mx-auto p-4">
             
             {/* HEADER */}
-            <motion.div className="bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 p-6 rounded-xl text-white">
+            <motion.div className="bg-gradient-to-r from-slate-600 via-slate-700 to-slate-800 p-6 rounded-xl text-white shadow-lg">
                 <div className="flex items-center gap-4">
                     <Brain size={36} />
                     <div>
                         <h2 className="text-2xl font-bold">Entrenamiento de Modelos</h2>
-                        <p className="opacity-90 text-sm">Entrena modelos reales desde tu backend</p>
+                        <p className="opacity-90 text-sm">Entrena modelos de Machine Learning con datos reales</p>
                     </div>
                 </div>
             </motion.div>
 
+            {/* ERROR DISPLAY */}
+            <AnimatePresence>
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3"
+                    >
+                        <AlertCircle className="text-red-600 mt-0.5 flex-shrink-0" size={22} />
+                        <div>
+                            <p className="font-bold text-red-800">Error</p>
+                            <p className="text-sm text-red-700 mt-1">{error}</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* FRAMEWORK SELECTOR */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold">Framework</h3>
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <h3 className="text-lg font-bold mb-4">Tipo de Modelo</h3>
+                <div className="grid grid-cols-2 gap-4">
                     <button
-                        onClick={() => setModelType('sklearn')}
-                        className={`p-4 rounded-xl border-2 ${modelType === 'sklearn' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'}`}
+                        onClick={() => setModelType('classification')}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                            modelType === 'classification' 
+                                ? 'border-indigo-500 bg-indigo-50' 
+                                : 'border-gray-300'
+                        }`}
                     >
-                        🔬 Scikit-Learn
+                        <div className="text-3xl mb-2">🎯</div>
+                        <p className="font-bold">Clasificación</p>
+                        <p className="text-xs text-gray-600 mt-1">Predecir candidato ganador</p>
                     </button>
 
                     <button
-                        onClick={() => setModelType('pytorch')}
-                        className={`p-4 rounded-xl border-2 ${modelType === 'pytorch' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'}`}
+                        onClick={() => setModelType('regression')}
+                        disabled
+                        className="p-4 rounded-xl border-2 border-gray-200 opacity-50 cursor-not-allowed"
                     >
-                        🔥 PyTorch
+                        <div className="text-3xl mb-2">📈</div>
+                        <p className="font-bold">Regresión</p>
+                        <p className="text-xs text-gray-600 mt-1">En desarrollo</p>
                     </button>
                 </div>
             </div>
 
-            {/* ALGORITHM */}
+            {/* ALGORITHM SELECTOR */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold">Selecciona el Modelo</h3>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                    {(modelType === 'sklearn' ? sklearnAlgorithms : pytorchModels).map(algo => (
+                <h3 className="text-lg font-bold mb-4">Selecciona el Algoritmo</h3>
+                <div className="grid grid-cols-3 gap-4">
+                    {sklearnAlgorithms.map(algo => (
                         <button
                             key={algo.id}
                             onClick={() => setAlgorithm(algo.id)}
-                            className={`p-4 border-2 rounded-xl ${algorithm === algo.id ? 'border-purple-500 bg-purple-50' : 'border-gray-300'}`}
+                            className={`p-4 border-2 rounded-xl transition-all ${
+                                algorithm === algo.id 
+                                    ? 'border-purple-500 bg-purple-50' 
+                                    : 'border-gray-300'
+                            }`}
                         >
                             <div className="text-3xl">{algo.icon}</div>
                             <p className="mt-2 text-sm font-bold">{algo.name}</p>
@@ -156,14 +239,13 @@ const EntrenamientoModelo = () => {
                 </div>
             </div>
 
-            {/* HYPERPARAMETERS */}
+            {/* ELECTION TYPE SELECTOR */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold">Tipo de Elección</h3>
-
+                <h3 className="text-lg font-bold mb-4">Tipo de Elección</h3>
                 <select
                     value={electionType}
                     onChange={(e) => setElectionType(e.target.value)}
-                    className="mt-2 w-full border p-3 rounded-lg"
+                    className="w-full border p-3 rounded-lg font-medium"
                 >
                     <option value="presidencial">🗳️ Presidencial</option>
                     <option value="regional">📍 Regional</option>
@@ -176,14 +258,18 @@ const EntrenamientoModelo = () => {
                 <motion.button
                     onClick={entrenarModelo}
                     disabled={isTraining}
-                    className={`w-full p-4 rounded-xl text-white font-bold text-lg 
-                        ${isTraining ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-600 to-indigo-600'}
-                    `}
+                    className={`w-full p-4 rounded-xl text-white font-bold text-lg transition-all ${
+                        isTraining 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                    }`}
+                    whileHover={!isTraining ? { scale: 1.02 } : {}}
+                    whileTap={!isTraining ? { scale: 0.98 } : {}}
                 >
                     {isTraining ? (
                         <div className="flex gap-2 items-center justify-center">
                             <Activity className="animate-spin" />
-                            Entrenando...
+                            Entrenando modelo...
                         </div>
                     ) : (
                         <div className="flex gap-2 items-center justify-center">
@@ -196,16 +282,22 @@ const EntrenamientoModelo = () => {
                 {/* PROGRESS BAR */}
                 <AnimatePresence>
                     {isTraining && (
-                        <motion.div className="mt-4">
+                        <motion.div 
+                            className="mt-4"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                        >
                             <div className="flex justify-between text-sm mb-1">
                                 <span>Progreso</span>
                                 <span>{trainingProgress}%</span>
                             </div>
-
-                            <div className="w-full bg-gray-200 h-3 rounded-full">
+                            <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
                                 <motion.div
-                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full"
-                                    style={{ width: `${trainingProgress}%` }}
+                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 h-3"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${trainingProgress}%` }}
+                                    transition={{ duration: 0.3 }}
                                 />
                             </div>
                         </motion.div>
@@ -213,22 +305,103 @@ const EntrenamientoModelo = () => {
                 </AnimatePresence>
             </div>
 
+            {/* RESULTS */}
+            <AnimatePresence>
+                {trainingComplete && currentModel && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="bg-white p-6 rounded-xl border shadow-lg"
+                    >
+                        <div className="flex items-center gap-3 mb-6">
+                            <CheckCircle className="text-green-600" size={32} />
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">¡Entrenamiento Completado!</h3>
+                                <p className="text-sm text-gray-600">Modelo: {currentModel.modelo_activo}</p>
+                            </div>
+                        </div>
+
+                        {/* Métricas */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-blue-50 p-4 rounded-lg text-center">
+                                <TrendingUp className="text-blue-600 mx-auto mb-2" size={24} />
+                                <p className="text-sm text-blue-700 font-medium">Accuracy</p>
+                                <p className="text-2xl font-bold text-blue-900">{currentModel.metricas.accuracy}</p>
+                            </div>
+                            <div className="bg-green-50 p-4 rounded-lg text-center">
+                                <Award className="text-green-600 mx-auto mb-2" size={24} />
+                                <p className="text-sm text-green-700 font-medium">Precision</p>
+                                <p className="text-2xl font-bold text-green-900">{currentModel.metricas.precision}</p>
+                            </div>
+                            <div className="bg-purple-50 p-4 rounded-lg text-center">
+                                <Activity className="text-purple-600 mx-auto mb-2" size={24} />
+                                <p className="text-sm text-purple-700 font-medium">Recall</p>
+                                <p className="text-2xl font-bold text-purple-900">{currentModel.metricas.recall}</p>
+                            </div>
+                            <div className="bg-orange-50 p-4 rounded-lg text-center">
+                                <Database className="text-orange-600 mx-auto mb-2" size={24} />
+                                <p className="text-sm text-orange-700 font-medium">F1-Score</p>
+                                <p className="text-2xl font-bold text-orange-900">{currentModel.metricas.f1_score}</p>
+                            </div>
+                        </div>
+
+                        {/* Feature Importance */}
+                        {currentModel.feature_importance && (
+                            <div>
+                                <h4 className="font-bold text-gray-800 mb-3">Importancia de Features</h4>
+                                <div className="space-y-2">
+                                    {Object.entries(currentModel.feature_importance).slice(0, 5).map(([label, value], idx) => (
+                                        <div key={idx}>
+                                            <div className="flex justify-between text-sm mb-1">
+                                                <span className="font-medium text-gray-700">{label}</span>
+                                                <span className="font-bold text-purple-700">{(value * 100).toFixed(1)}%</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 h-2 rounded-full">
+                                                <motion.div
+                                                    className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full"
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${value * 100}%` }}
+                                                    transition={{ duration: 0.8, delay: idx * 0.1 }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* TRAINING HISTORY */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold flex gap-2 items-center">
+                <h3 className="text-lg font-bold flex gap-2 items-center mb-4">
                     <Database size={20} className="text-indigo-600" />
-                    Modelos Entrenados
+                    Historial de Entrenamientos
                 </h3>
 
-                <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
-                    {trainingHistory.map(item => (
-                        <div key={item.id} className="p-3 border rounded-md bg-indigo-50">
-                            <p className="font-bold">{item.algorithm}</p>
-                            <p className="text-sm text-gray-600">{item.framework} • {item.electionType}</p>
-                            <p className="text-sm font-bold text-green-600">Accuracy: {item.accuracy}%</p>
-                        </div>
-                    ))}
-                </div>
+                {trainingHistory.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">No hay entrenamientos todavía</p>
+                ) : (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {trainingHistory.map(item => (
+                            <div key={item.id} className="p-3 border rounded-md bg-indigo-50">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold">{item.algorithm}</p>
+                                        <p className="text-sm text-gray-600">{item.framework} • {item.electionType}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{item.date}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-bold text-green-600">Accuracy: {item.accuracy}</p>
+                                        <p className="text-xs text-gray-600">F1: {item.f1}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </motion.div>
     );
