@@ -127,110 +127,82 @@ const GestionDatos = () => {
   // Para exportar datos a CSV por tipo
   const exportarCSV = () => {
     try {
-      let datosExportar = [];
-      let tipoLabel = '';
-      let headers = [];
+      let datosAExportar = [];
+      let nombreTipo = '';
 
       if (filtroTipo === 'presidencial') {
-        datosExportar = filtrados;
-        tipoLabel = 'presidencial';
-        headers = [
-          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Presidencial','Fecha Registro','Estado'
-        ];
+        datosAExportar = datos.presidencial;
+        nombreTipo = 'presidencial';
       } else if (filtroTipo === 'regional') {
-        datosExportar = filtrados;
-        tipoLabel = 'regional';
-        headers = [
-          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Regional','Fecha Registro','Estado'
-        ];
+        datosAExportar = datos.regional;
+        nombreTipo = 'regional';
       } else if (filtroTipo === 'distrital') {
-        datosExportar = filtrados;
-        tipoLabel = 'distrital';
-        headers = [
-          'ID','DNI','Nombre Completo','Edad','Departamento','Provincia','Distrito','Dirección','Teléfono','Email','Voto Distrital','Fecha Registro','Estado'
-        ];
+        datosAExportar = datos.distrital;
+        nombreTipo = 'distrital';
       }
 
-      if (datosExportar.length === 0) {
+      if (datosAExportar.length === 0) {
         alert('No hay datos para exportar');
         return;
       }
 
-      // Filas por tipo
-      const filas = datosExportar.map(row => {
-        if (filtroTipo === 'presidencial') {
-          return [
-            row.id,
-            row.dni,
-            row.nombre_completo,
-            row.edad,
-            row.departamento,
-            row.provincia,
-            row.distrito,
-            row.direccion,
-            row.telefono,
-            row.email,
-            row.votoPresidencial,
-            row.fechaRegistro,
-            row.estado,
-          ];
-        }
-        if (filtroTipo === 'regional') {
-          return [
-            row.id,
-            row.dni,
-            row.nombre_completo,
-            row.edad,
-            row.departamento,
-            row.provincia,
-            row.distrito,
-            row.direccion,
-            row.telefono,
-            row.email,
-            row.votoRegional,
-            row.fechaRegistro,
-            row.estado,
-          ];
-        }
-        if (filtroTipo === 'distrital') {
-          return [
-            row.id,
-            row.dni,
-            row.nombre_completo,
-            row.edad,
-            row.departamento,
-            row.provincia,
-            row.distrito,
-            row.direccion,
-            row.telefono,
-            row.email,
-            row.votoDistrital,
-            row.fechaRegistro,
-            row.estado,
-          ];
-        }
-        return [];
+      // ENCABEZADOS CON candidato_id (¡ESTO ES LO IMPORTANTE!)
+      const headers = [
+        'DNI',
+        'Nombre Completo',
+        'candidato_id',           // ← AQUÍ ESTÁ LA CLAVE
+        'Candidato Nombre',       // ← opcional, para que veas quién es
+        'Departamento',
+        'Provincia',
+        'Distrito',
+        'Fecha Registro'
+      ];
+
+      const filas = datosAExportar.map(row => {
+        // Extraer candidato_id del objeto original (está en el voto)
+        const candidatoId = row.votoPresidencial?.id ||
+          row.votoRegional?.id ||
+          row.votoDistrital?.id ||
+          row.candidato_id ||
+          'NO-ID';
+
+        const candidatoNombre = filtroTipo === 'presidencial' ? row.votoPresidencial :
+          filtroTipo === 'regional' ? row.votoRegional : row.votoDistrital;
+
+        return [
+          row.dni || '',
+          row.nombre_completo || '',
+          candidatoId,                    // ← ESTE ES EL QUE IMPORTA
+          candidatoNombre || '',          // ← solo para referencia humana
+          row.departamento || '',
+          row.provincia || '',
+          row.distrito || '',
+          row.fechaRegistro || ''
+        ];
       });
 
-      const csvContent = [
+      const csvRows = [
         headers.join(','),
-        ...filas.map(row => row.map(campo => `"${campo}"`).join(','))
-      ].join('\n');
+        ...filas.map(fila =>
+          fila.map(campo => `"${(campo + '').replace(/"/g, '""')}"`).join(',')
+        )
+      ];
 
+      const csvContent = csvRows.join('\r\n');
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
 
-      const fecha = new Date().toISOString().split('T')[0];
-      link.setAttribute('href', url);
-      link.setAttribute('download', `votos_${tipoLabel}_${fecha}.csv`);
-      link.style.visibility = 'hidden';
+      const fecha = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
+      link.setAttribute('download', `votos_${nombreTipo}_CON_ID_${fecha}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
     } catch (err) {
-      alert('Error al exportar el archivo CSV');
+      console.error(err);
+      alert('Error al exportar CSV');
     }
   };
 
@@ -351,8 +323,8 @@ const GestionDatos = () => {
               key={tipo.id}
               onClick={() => { setFiltroTipo(tipo.id); setSelectedRows([]); setTerminoBusqueda(''); }}
               className={`px-6 py-3 font-medium text-sm border-b-2 transition-all ${filtroTipo === tipo.id
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-600 hover:text-indigo-600'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-600 hover:text-indigo-600'
                 }`}
             >
               {tipo.label} ({tipo.count})
@@ -437,8 +409,8 @@ const GestionDatos = () => {
                   {filtroTipo === 'presidencial'
                     ? 'Voto Presidencial'
                     : filtroTipo === 'regional'
-                    ? 'Voto Regional'
-                    : 'Voto Distrital'}
+                      ? 'Voto Regional'
+                      : 'Voto Distrital'}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Fecha Registro</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Estado</th>
@@ -466,8 +438,8 @@ const GestionDatos = () => {
                     {filtroTipo === 'presidencial'
                       ? row.votoPresidencial
                       : filtroTipo === 'regional'
-                      ? row.votoRegional
-                      : row.votoDistrital}
+                        ? row.votoRegional
+                        : row.votoDistrital}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{row.fechaRegistro}</td>
                   <td className="px-6 py-4">
