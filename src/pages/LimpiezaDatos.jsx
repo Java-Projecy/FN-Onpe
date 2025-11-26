@@ -109,17 +109,50 @@ const LimpiezaDatos = () => {
     }
   };
 
-  const handleCleaningAction = (actionId) => {
+  // Acciones de limpieza conectadas al backend
+  const handleCleaningAction = async (actionId) => {
     if (isProcessing || !batchSeleccionado) return;
-    
+
     setIsProcessing(true);
     setCurrentProcessingStep(actionId);
-    
-    setTimeout(() => {
-      setCompletedSteps(prev => [...prev, actionId]);
+
+    try {
+      let endpoint = '';
+      let method = 'post';
+      let payload = {};
+
+      if (actionId === 2) {
+        // Quitar duplicados
+        endpoint = `${API_URL}/api/upload/batch/${batchSeleccionado.batch_id}/remove-duplicates`;
+      } else if (actionId === 3) {
+        // Limpiar nulos
+        endpoint = `${API_URL}/api/upload/batch/${batchSeleccionado.batch_id}/clean-nulls`;
+      } else if (actionId === 4) {
+        // Normalizar
+        endpoint = `${API_URL}/api/upload/batch/${batchSeleccionado.batch_id}/normalize`;
+      } else {
+        // Analizar datos (ya se hace al cargar)
+        setCompletedSteps(prev => [...prev, actionId]);
+        setIsProcessing(false);
+        setCurrentProcessingStep(null);
+        return;
+      }
+
+      const response = await axios[method](endpoint, payload);
+
+      if (response.data.success) {
+        setCompletedSteps(prev => [...prev, actionId]);
+        // Recargar datos después de limpiar
+        await cargarDatosBatch();
+      } else {
+        alert(response.data.message || 'Error en la limpieza de datos');
+      }
+    } catch (error) {
+      alert('Error en la limpieza: ' + (error.response?.data?.detail || error.message));
+    } finally {
       setIsProcessing(false);
       setCurrentProcessingStep(null);
-    }, 1200);
+    }
   };
 
   const enviarATablaFinal = async () => {

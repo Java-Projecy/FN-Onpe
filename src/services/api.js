@@ -85,4 +85,13 @@ export const healthAPI = {
     check: () => api.get('/health').catch(() => ({ data: { status: 'DOWN' } })),
 };
 
+// ============================================
+// LIMPIEZA DE DATOS DE BATCHES
+// ============================================
+export const limpiezaBatchAPI = {
+    removeDuplicates: (batchId) => api.post(`/upload/batch/${batchId}/remove-duplicates`),
+    cleanNulls: (batchId) => api.post(`/upload/batch/${batchId}/clean-nulls`),
+    normalize: (batchId) => api.post(`/upload/batch/${batchId}/normalize`),
+};
+
 export default api;
