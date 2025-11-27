@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Brain, Play, Activity, Database, TrendingUp, Award, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Brain, Play, Activity, Database, TrendingUp, Award, CheckCircle, AlertCircle, RefreshCw, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ✅ Configuración de API
@@ -31,14 +31,21 @@ const EntrenamientoModelo = () => {
         }
     };
 
-    const sklearnAlgorithms = [
-        { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
-        { id: 'logistic_regression', name: 'Regresión Logística', icon: '📊' },
-        { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
-    ];
+    const sklearnAlgorithms = {
+        classification: [
+            { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
+            { id: 'logistic_regression', name: 'Regresión Logística', icon: '📊' },
+            { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
+        ],
+        regression: [  // ✅ ALGORITMOS DE REGRESIÓN CORRECTOS
+            { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
+            { id: 'linear_regression', name: 'Regresión Lineal', icon: '📈' },
+            { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
+        ]
+    };
 
     const getCurrentAlgorithmName = () => {
-        const algo = sklearnAlgorithms.find(a => a.id === algorithm);
+        const algo = sklearnAlgorithms[modelType].find(a => a.id === algorithm);
         return algo ? algo.name : algorithm;
     };
 
@@ -72,17 +79,26 @@ const EntrenamientoModelo = () => {
                 });
             }, 500);
 
-            console.log(`🎯 Iniciando entrenamiento real: ${algorithm} para ${electionType}`);
+            console.log(`🎯 Iniciando entrenamiento: ${algorithm} para ${electionType} (${modelType})`);
 
-            // 🌐 REQUEST REAL AL BACKEND
+            // ✅ VOLVER AL ENDPOINT SIMPLIFICADO QUE FUNCIONA
+            // Este endpoint solo soporta clasificación por ahora
+            if (modelType === 'regression') {
+                throw new Error("La regresión estará disponible pronto. Por ahora usa clasificación.");
+            }
+
             const response = await axios.post(
                 `${API_URL}/api/train/entrenar/${electionType}`,
-                {}, // Body vacío como espera el backend actual
+                {
+                    model_type: modelType,
+                    algorithm: algorithm,
+                    election_type: electionType
+                },
                 {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    timeout: 120000 // 2 minutos de timeout
+                    timeout: 120000
                 }
             );
 
@@ -99,13 +115,14 @@ const EntrenamientoModelo = () => {
 
                 // Extraer métricas de la respuesta real
                 const responseData = response.data;
-                
+
                 setCurrentModel({
                     modelo_activo: responseData.modelo_activo,
                     metricas: responseData.metricas,
                     participacion_estimada: responseData.participacion_estimada,
                     feature_importance: responseData.feature_importance,
-                    training_time: responseData.training_time
+                    training_time: responseData.training_time,
+                    model_type: modelType
                 });
 
                 // Agregar al historial
@@ -115,6 +132,7 @@ const EntrenamientoModelo = () => {
                     algorithm: getCurrentAlgorithmName(),
                     framework: "Scikit-Learn",
                     electionType: getElectionTypeLabel(),
+                    modelType: modelType,
                     accuracy: responseData.metricas.accuracy,
                     f1: responseData.metricas.f1_score,
                     time: responseData.training_time
@@ -126,24 +144,22 @@ const EntrenamientoModelo = () => {
             }
 
         } catch (error) {
-            console.error("❌ Error en entrenamiento real:", error);
-            
+            console.error("❌ Error en entrenamiento:", error);
+
             // ✅ Limpiar intervalo en caso de error
             if (progressInterval) {
                 clearInterval(progressInterval);
             }
-            
+
             setTrainingProgress(0);
-            
+
             let errorMessage = "Error al entrenar el modelo";
-            
+
             if (error.response) {
-                // Error del servidor con respuesta
                 const errorData = error.response.data;
                 console.error('📋 Datos del error:', errorData);
-                
+
                 if (errorData.detail) {
-                    // Manejar errores de validación
                     if (Array.isArray(errorData.detail)) {
                         errorMessage = errorData.detail.map(err => `${err.loc?.join('.')}: ${err.msg}`).join(', ');
                     } else {
@@ -151,16 +167,12 @@ const EntrenamientoModelo = () => {
                     }
                 } else if (errorData.error) {
                     errorMessage = errorData.error;
-                } else if (typeof errorData === 'string') {
-                    errorMessage = errorData;
                 } else {
                     errorMessage = `Error ${error.response.status}: ${JSON.stringify(errorData)}`;
                 }
             } else if (error.request) {
-                // No hubo respuesta del servidor
                 errorMessage = "No se pudo conectar con el servidor. Verifica que el backend esté corriendo en " + API_URL;
             } else {
-                // Error en la configuración
                 errorMessage = error.message;
             }
 
@@ -171,17 +183,35 @@ const EntrenamientoModelo = () => {
     };
 
     // ✅ Función para diagnosticar problemas
-    
+    const diagnosticarProblemas = async () => {
+        try {
+            setError(null);
+            console.log('🔍 Diagnosticando sistema...');
+
+            const testResponse = await axios.get(`${API_URL}/api/train/modelos-activos`, {
+                timeout: 10000
+            });
+            console.log('✅ Conexión básica OK:', testResponse.data);
+            alert('✅ ¡Sistema funcionando correctamente!');
+
+        } catch (error) {
+            console.error('❌ Error en diagnóstico:', error);
+            setError(`Error de conexión: ${error.message}`);
+        }
+    };
 
     // ✅ Función para limpiar errores
     const limpiarError = () => {
         setError(null);
     };
 
+    // Resetear algoritmo cuando cambie el tipo de modelo
+    useEffect(() => {
+        setAlgorithm(sklearnAlgorithms[modelType][0].id);
+    }, [modelType]);
+
     return (
         <motion.div className="space-y-6 max-w-7xl mx-auto p-4">
-            
-            {/* HEADER */}
 
             {/* ERROR DISPLAY */}
             <AnimatePresence>
@@ -200,7 +230,7 @@ const EntrenamientoModelo = () => {
                                     <p className="text-sm text-red-700 mt-1 whitespace-pre-line">{error}</p>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={limpiarError}
                                 className="text-red-600 hover:text-red-800 ml-2 flex-shrink-0"
                             >
@@ -217,11 +247,10 @@ const EntrenamientoModelo = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         onClick={() => setModelType('classification')}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                            modelType === 'classification' 
-                                ? 'border-indigo-500 bg-indigo-50' 
-                                : 'border-gray-300'
-                        }`}
+                        className={`p-4 rounded-xl border-2 transition-all ${modelType === 'classification'
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-gray-300'
+                            }`}
                     >
                         <div className="text-3xl mb-2">🎯</div>
                         <p className="font-bold">Clasificación</p>
@@ -230,29 +259,34 @@ const EntrenamientoModelo = () => {
 
                     <button
                         onClick={() => setModelType('regression')}
-                        disabled
-                        className="p-4 rounded-xl border-2 border-gray-200 opacity-50 cursor-not-allowed"
+                        className={`p-4 rounded-xl border-2 transition-all ${modelType === 'regression'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-300'
+                            }`}
                     >
                         <div className="text-3xl mb-2">📈</div>
                         <p className="font-bold">Regresión</p>
-                        <p className="text-xs text-gray-600 mt-1">En desarrollo</p>
+                        <p className="text-xs text-gray-600 mt-1">Predecir % de votos</p>
                     </button>
                 </div>
             </div>
 
             {/* ALGORITHM SELECTOR */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold mb-4">Selecciona el Algoritmo</h3>
+                <h3 className="text-lg font-bold mb-4">
+                    Selecciona el Algoritmo ({modelType === 'classification' ? 'Clasificación' : 'Regresión'})
+                </h3>
                 <div className="grid grid-cols-3 gap-4">
-                    {sklearnAlgorithms.map(algo => (
+                    {sklearnAlgorithms[modelType].map(algo => (
                         <button
                             key={algo.id}
                             onClick={() => setAlgorithm(algo.id)}
-                            className={`p-4 border-2 rounded-xl transition-all ${
-                                algorithm === algo.id 
-                                    ? 'border-purple-500 bg-purple-50' 
-                                    : 'border-gray-300'
-                            }`}
+                            className={`p-4 border-2 rounded-xl transition-all ${algorithm === algo.id
+                                ? modelType === 'classification'
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-green-500 bg-green-50'
+                                : 'border-gray-300'
+                                }`}
                         >
                             <div className="text-3xl">{algo.icon}</div>
                             <p className="mt-2 text-sm font-bold">{algo.name}</p>
@@ -280,11 +314,12 @@ const EntrenamientoModelo = () => {
                 <motion.button
                     onClick={entrenarModelo}
                     disabled={isTraining}
-                    className={`w-full p-4 rounded-xl text-white font-bold text-lg transition-all ${
-                        isTraining 
-                            ? 'bg-gray-400 cursor-not-allowed' 
-                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
-                    }`}
+                    className={`w-full p-4 rounded-xl text-white font-bold text-lg transition-all ${isTraining
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : modelType === 'classification'
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                        }`}
                     whileHover={!isTraining ? { scale: 1.02 } : {}}
                     whileTap={!isTraining ? { scale: 0.98 } : {}}
                 >
@@ -296,7 +331,7 @@ const EntrenamientoModelo = () => {
                     ) : (
                         <div className="flex gap-2 items-center justify-center">
                             <Play />
-                            Entrenar Modelo
+                            Entrenar Modelo {modelType === 'classification' ? 'de Clasificación' : 'de Regresión'}
                         </div>
                     )}
                 </motion.button>
@@ -304,7 +339,7 @@ const EntrenamientoModelo = () => {
                 {/* PROGRESS BAR */}
                 <AnimatePresence>
                     {isTraining && (
-                        <motion.div 
+                        <motion.div
                             className="mt-4"
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
@@ -316,7 +351,10 @@ const EntrenamientoModelo = () => {
                             </div>
                             <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden">
                                 <motion.div
-                                    className="bg-gradient-to-r from-purple-600 to-indigo-600 h-3"
+                                    className={`h-3 ${modelType === 'classification'
+                                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600'
+                                        : 'bg-gradient-to-r from-green-600 to-emerald-600'
+                                        }`}
                                     initial={{ width: 0 }}
                                     animate={{ width: `${trainingProgress}%` }}
                                     transition={{ duration: 0.3 }}
@@ -339,7 +377,9 @@ const EntrenamientoModelo = () => {
                         <div className="flex items-center gap-3 mb-6">
                             <CheckCircle className="text-green-600" size={32} />
                             <div>
-                                <h3 className="text-xl font-bold text-gray-800">¡Entrenamiento Completado!</h3>
+                                <h3 className="text-xl font-bold text-gray-800">
+                                    ¡Entrenamiento Completado! ({modelType === 'classification' ? 'Clasificación' : 'Regresión'})
+                                </h3>
                                 <p className="text-sm text-gray-600">Modelo: {currentModel.modelo_activo}</p>
                                 {currentModel.training_time && (
                                     <p className="text-xs text-gray-500 mt-1">
@@ -349,44 +389,87 @@ const EntrenamientoModelo = () => {
                             </div>
                         </div>
 
-                        {/* Métricas */}
+                        {/* Métricas - Diferentes según el tipo de modelo */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-blue-50 p-4 rounded-lg text-center">
-                                <TrendingUp className="text-blue-600 mx-auto mb-2" size={24} />
-                                <p className="text-sm text-blue-700 font-medium">Accuracy</p>
-                                <p className="text-2xl font-bold text-blue-900">
-                                    {typeof currentModel.metricas.accuracy === 'number' 
-                                        ? (currentModel.metricas.accuracy * 100).toFixed(1) + '%'
-                                        : currentModel.metricas.accuracy}
-                                </p>
-                            </div>
-                            <div className="bg-green-50 p-4 rounded-lg text-center">
-                                <Award className="text-green-600 mx-auto mb-2" size={24} />
-                                <p className="text-sm text-green-700 font-medium">Precision</p>
-                                <p className="text-2xl font-bold text-green-900">
-                                    {typeof currentModel.metricas.precision === 'number' 
-                                        ? (currentModel.metricas.precision * 100).toFixed(1) + '%'
-                                        : currentModel.metricas.precision}
-                                </p>
-                            </div>
-                            <div className="bg-purple-50 p-4 rounded-lg text-center">
-                                <Activity className="text-purple-600 mx-auto mb-2" size={24} />
-                                <p className="text-sm text-purple-700 font-medium">Recall</p>
-                                <p className="text-2xl font-bold text-purple-900">
-                                    {typeof currentModel.metricas.recall === 'number' 
-                                        ? (currentModel.metricas.recall * 100).toFixed(1) + '%'
-                                        : currentModel.metricas.recall}
-                                </p>
-                            </div>
-                            <div className="bg-orange-50 p-4 rounded-lg text-center">
-                                <Database className="text-orange-600 mx-auto mb-2" size={24} />
-                                <p className="text-sm text-orange-700 font-medium">F1-Score</p>
-                                <p className="text-2xl font-bold text-orange-900">
-                                    {typeof currentModel.metricas.f1_score === 'number' 
-                                        ? (currentModel.metricas.f1_score * 100).toFixed(1) + '%'
-                                        : currentModel.metricas.f1_score}
-                                </p>
-                            </div>
+                            {modelType === 'classification' ? (
+                                <>
+                                    <div className="bg-blue-50 p-4 rounded-lg text-center">
+                                        <TrendingUp className="text-blue-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-blue-700 font-medium">Accuracy</p>
+                                        <p className="text-2xl font-bold text-blue-900">
+                                            {typeof currentModel.metricas.accuracy === 'number'
+                                                ? (currentModel.metricas.accuracy * 100).toFixed(1) + '%'
+                                                : currentModel.metricas.accuracy || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-lg text-center">
+                                        <Award className="text-green-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-green-700 font-medium">Precision</p>
+                                        <p className="text-2xl font-bold text-green-900">
+                                            {typeof currentModel.metricas.precision === 'number'
+                                                ? (currentModel.metricas.precision * 100).toFixed(1) + '%'
+                                                : currentModel.metricas.precision || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-lg text-center">
+                                        <Activity className="text-purple-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-purple-700 font-medium">Recall</p>
+                                        <p className="text-2xl font-bold text-purple-900">
+                                            {typeof currentModel.metricas.recall === 'number'
+                                                ? (currentModel.metricas.recall * 100).toFixed(1) + '%'
+                                                : currentModel.metricas.recall || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-orange-50 p-4 rounded-lg text-center">
+                                        <Database className="text-orange-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-orange-700 font-medium">F1-Score</p>
+                                        <p className="text-2xl font-bold text-orange-900">
+                                            {typeof currentModel.metricas.f1_score === 'number'
+                                                ? (currentModel.metricas.f1_score * 100).toFixed(1) + '%'
+                                                : currentModel.metricas.f1_score || 'N/A'}
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="bg-blue-50 p-4 rounded-lg text-center">
+                                        <BarChart3 className="text-blue-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-blue-700 font-medium">R² Score</p>
+                                        <p className="text-2xl font-bold text-blue-900">
+                                            {typeof currentModel.metricas.r2 === 'number'
+                                                ? currentModel.metricas.r2.toFixed(4)
+                                                : currentModel.metricas.r2 || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-green-50 p-4 rounded-lg text-center">
+                                        <TrendingUp className="text-green-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-green-700 font-medium">RMSE</p>
+                                        <p className="text-2xl font-bold text-green-900">
+                                            {typeof currentModel.metricas.rmse === 'number'
+                                                ? currentModel.metricas.rmse.toFixed(4)
+                                                : currentModel.metricas.rmse || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-purple-50 p-4 rounded-lg text-center">
+                                        <Award className="text-purple-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-purple-700 font-medium">MAE</p>
+                                        <p className="text-2xl font-bold text-purple-900">
+                                            {typeof currentModel.metricas.mae === 'number'
+                                                ? currentModel.metricas.mae.toFixed(4)
+                                                : currentModel.metricas.mae || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="bg-orange-50 p-4 rounded-lg text-center">
+                                        <Database className="text-orange-600 mx-auto mb-2" size={24} />
+                                        <p className="text-sm text-orange-700 font-medium">MSE</p>
+                                        <p className="text-2xl font-bold text-orange-900">
+                                            {typeof currentModel.metricas.mse === 'number'
+                                                ? currentModel.metricas.mse.toFixed(4)
+                                                : currentModel.metricas.mse || 'N/A'}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Feature Importance */}
@@ -397,23 +480,23 @@ const EntrenamientoModelo = () => {
                                     {Object.entries(currentModel.feature_importance)
                                         .slice(0, 5)
                                         .map(([label, value], idx) => (
-                                        <div key={idx}>
-                                            <div className="flex justify-between text-sm mb-1">
-                                                <span className="font-medium text-gray-700">{label}</span>
-                                                <span className="font-bold text-purple-700">
-                                                    {(parseFloat(value) * 100).toFixed(1)}%
-                                                </span>
+                                            <div key={idx}>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="font-medium text-gray-700">{label}</span>
+                                                    <span className="font-bold text-purple-700">
+                                                        {(parseFloat(value) * 100).toFixed(1)}%
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 h-2 rounded-full">
+                                                    <motion.div
+                                                        className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full"
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${parseFloat(value) * 100}%` }}
+                                                        transition={{ duration: 0.8, delay: idx * 0.1 }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="w-full bg-gray-200 h-2 rounded-full">
-                                                <motion.div
-                                                    className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full"
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${parseFloat(value) * 100}%` }}
-                                                    transition={{ duration: 0.8, delay: idx * 0.1 }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             </div>
                         )}
@@ -430,37 +513,6 @@ const EntrenamientoModelo = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* TRAINING HISTORY */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
-                <h3 className="text-lg font-bold flex gap-2 items-center mb-4">
-                    <Database size={20} className="text-indigo-600" />
-                    Historial de Entrenamientos
-                </h3>
-
-                {trainingHistory.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">No hay entrenamientos todavía</p>
-                ) : (
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {trainingHistory.map(item => (
-                            <div key={item.id} className="p-3 border rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 transition-all">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-gray-800">{item.algorithm}</p>
-                                        <p className="text-sm text-gray-600">{item.framework} • {item.electionType}</p>
-                                        <p className="text-xs text-gray-500 mt-1">{item.date}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-bold text-green-600">Accuracy: {item.accuracy}</p>
-                                        <p className="text-xs text-gray-600">F1: {item.f1}</p>
-                                        {item.time && <p className="text-xs text-gray-500 mt-1">{item.time}</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
         </motion.div>
     );
 };
