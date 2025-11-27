@@ -31,16 +31,17 @@ const EntrenamientoModelo = () => {
         }
     };
 
+    // En EntrenamientoModelo.jsx, cambia esta parte:
     const sklearnAlgorithms = {
         classification: [
             { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
             { id: 'logistic_regression', name: 'Regresión Logística', icon: '📊' },
             { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
         ],
-        regression: [  // ✅ ALGORITMOS DE REGRESIÓN CORRECTOS
-            { id: 'random_forest', name: 'Random Forest', icon: '🌳' },
+        regression: [  // ✅ CORREGIR ESTOS NOMBRES
+            { id: 'random_forest', name: 'Random Forest Regressor', icon: '🌳' },
             { id: 'linear_regression', name: 'Regresión Lineal', icon: '📈' },
-            { id: 'gradient_boosting', name: 'Gradient Boosting', icon: '🚀' }
+            { id: 'gradient_boosting', name: 'Gradient Boosting Regressor', icon: '🚀' }
         ]
     };
 
@@ -81,17 +82,14 @@ const EntrenamientoModelo = () => {
 
             console.log(`🎯 Iniciando entrenamiento: ${algorithm} para ${electionType} (${modelType})`);
 
-            // ✅ VOLVER AL ENDPOINT SIMPLIFICADO QUE FUNCIONA
-            // Este endpoint solo soporta clasificación por ahora
-            if (modelType === 'regression') {
-                throw new Error("La regresión estará disponible pronto. Por ahora usa clasificación.");
-            }
-
+            // ✅ Llamada al endpoint AVANZADO que soporta ambos tipos
             const response = await axios.post(
-                `${API_URL}/api/train/entrenar/${electionType}`,
+                `${API_URL}/api/train/train`,
                 {
                     model_type: modelType,
                     algorithm: algorithm,
+                    test_size: 0.2,
+                    random_state: 42,
                     election_type: electionType
                 },
                 {
@@ -102,7 +100,7 @@ const EntrenamientoModelo = () => {
                 }
             );
 
-            // ✅ Limpiar intervalo
+            // Limpiar intervalo
             if (progressInterval) {
                 clearInterval(progressInterval);
             }
@@ -117,12 +115,12 @@ const EntrenamientoModelo = () => {
                 const responseData = response.data;
 
                 setCurrentModel({
-                    modelo_activo: responseData.modelo_activo,
-                    metricas: responseData.metricas,
+                    modelo_activo: responseData.model_name || algorithm,
+                    metricas: responseData.metrics,
                     participacion_estimada: responseData.participacion_estimada,
                     feature_importance: responseData.feature_importance,
                     training_time: responseData.training_time,
-                    model_type: modelType
+                    model_type: modelType  // "classification" o "regression"
                 });
 
                 // Agregar al historial
@@ -133,8 +131,8 @@ const EntrenamientoModelo = () => {
                     framework: "Scikit-Learn",
                     electionType: getElectionTypeLabel(),
                     modelType: modelType,
-                    accuracy: responseData.metricas.accuracy,
-                    f1: responseData.metricas.f1_score,
+                    accuracy: responseData.metrics.accuracy || responseData.metrics.r2,
+                    f1: responseData.metrics.f1_score || responseData.metrics.rmse,
                     time: responseData.training_time
                 };
 
@@ -146,7 +144,7 @@ const EntrenamientoModelo = () => {
         } catch (error) {
             console.error("❌ Error en entrenamiento:", error);
 
-            // ✅ Limpiar intervalo en caso de error
+            // Limpiar intervalo en caso de error
             if (progressInterval) {
                 clearInterval(progressInterval);
             }
